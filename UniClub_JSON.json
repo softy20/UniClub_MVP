@@ -1,0 +1,342 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UniClubOpsSchema",
+  "description": "장르 무관 대학 동아리/소모임 운영 매뉴얼 추출 스키마. 연간 행사, D-Day 할 일, 월간 타임라인, 회계 규칙, 준비물을 구조화한다. 종목 전용 값은 vertical_extensions에 둔다.",
+  "type": "object",
+  "properties": {
+    "club_info": {
+      "type": "object",
+      "description": "동아리 기본 정보 및 운영 체계",
+      "properties": {
+        "club_name": { "type": "string", "example": "캠퍼스 밴드" },
+        "academic_year": { "type": "integer", "example": 2026 },
+        "university": { "type": "string", "description": "소속 대학. 없으면 생략" },
+        "club_genre": {
+          "type": "string",
+          "description": "동아리가 스스로 적는 분류. 고정 enum 없음. 예: 공연, 봉사, 학술, 스포츠, 취미"
+        },
+        "advisors": {
+          "type": "array",
+          "description": "지도교수, 자문, 담당 교직원 등",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name_or_title": { "type": "string", "example": "지도교수님" },
+              "affiliation": { "type": "string", "example": "경영학과" },
+              "contact": { "type": "string", "example": "010-XXXX-XXXX" }
+            },
+            "required": ["name_or_title"]
+          }
+        },
+        "roles": {
+          "type": "array",
+          "description": "해당 동아리 운영진 역할. 추출된 문서 기준으로 정의하며 하드코딩하지 않음",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role_name": { "type": "string", "example": "총무" },
+              "description": { "type": "string", "example": "회비 및 정산 담당" }
+            },
+            "required": ["role_name"]
+          }
+        },
+        "chat_room_rules": {
+          "type": "array",
+          "description": "소통 채널 분리 수칙",
+          "items": {
+            "type": "object",
+            "properties": {
+              "room_type": {
+                "type": "string",
+                "description": "동아리가 쓰는 채널 이름. 예: 공지방, 수다방, 행사방"
+              },
+              "is_input_locked": { "type": "boolean", "description": "일반 부원 입력 잠금 여부" },
+              "purpose": { "type": "string" }
+            },
+            "required": ["room_type", "purpose"]
+          }
+        }
+      },
+      "required": ["club_name", "academic_year", "roles"]
+    },
+
+    "events": {
+      "type": "array",
+      "description": "연간 주요 행사 및 D-Day 역산 할 일",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string", "example": "evt_spring_mt" },
+          "event_name": { "type": "string", "example": "봄학기 MT" },
+          "category": {
+            "type": "string",
+            "description": "동아리가 정하는 행사 분류. 예: 신입모집, 정기활동, MT/친목, 부스/행사, 공연, 봉사, 투어"
+          },
+          "target_month": { "type": "integer", "minimum": 1, "maximum": 12, "example": 6 },
+          "target_week": { "type": "string", "example": "4주차" },
+          "event_date": {
+            "type": "string",
+            "format": "date",
+            "description": "확정된 날짜가 매뉴얼에 있으면 ISO 날짜. 없으면 생략하고 월/주차만 사용"
+          },
+          "estimated_cost_per_person": { "type": "integer", "example": 50000 },
+          "location": { "type": "string", "example": "가평 펜션" },
+          "tasks": {
+            "type": "array",
+            "description": "행사 D-Day 기준 역산 할 일",
+            "items": {
+              "type": "object",
+              "properties": {
+                "task_id": { "type": "string", "example": "task_venue_booking" },
+                "task_name": { "type": "string", "example": "숙소 예약 및 계약금 입금" },
+                "days_before_dday": {
+                  "type": "integer",
+                  "description": "D-Day 며칠 전에 완료해야 하는지. D-14는 14, 당일은 0",
+                  "example": 14
+                },
+                "assigned_role": {
+                  "type": "string",
+                  "description": "club_info.roles[].role_name 중 하나, 또는 임원진공통",
+                  "example": "총무"
+                },
+                "is_mandatory": {
+                  "type": "boolean",
+                  "description": "지연 시 행사 진행에 치명적인 필수 작업 여부"
+                },
+                "action_details": { "type": "string", "description": "세부 수칙, 주의사항, 업체 정보" },
+                "checklist": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["재방문 할인 문의", "픽업 시간 확정", "취소 규정 확인"]
+                }
+              },
+              "required": ["task_name", "days_before_dday", "assigned_role", "is_mandatory"]
+            }
+          }
+        },
+        "required": ["event_name", "category", "target_month", "tasks"]
+      }
+    },
+
+    "monthly_timelines": {
+      "type": "array",
+      "description": "1~12월 월간 초점 및 주차별 마일스톤. 해당 월 정보가 없으면 그 월은 생략 가능",
+      "items": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "monthly_focus": {
+            "type": "string",
+            "description": "해당 월의 핵심 테마",
+            "example": "신입 모집 및 등록"
+          },
+          "weekly_schedule": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "week_number": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "week_label": { "type": "string", "example": "3월 둘째 주" },
+                "key_activities": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["면접", "합격 발표"]
+                }
+              },
+              "required": ["week_number", "key_activities"]
+            }
+          }
+        },
+        "required": ["month", "monthly_focus", "weekly_schedule"]
+      }
+    },
+
+    "financial_and_admin_rules": {
+      "type": "object",
+      "description": "회비, 추가 비용, 영수증 증빙 수칙",
+      "properties": {
+        "membership_fee": {
+          "type": "object",
+          "properties": {
+            "new_member_total": { "type": "integer", "example": 30000, "description": "신입 총 납부액(원)" },
+            "existing_member": { "type": "integer", "example": 10000, "description": "기존 부원 회비(원)" },
+            "fee_notes": { "type": "string", "description": "입부비 구성, 납부 시기 등 보충 설명" },
+            "waiver_roles": {
+              "type": "array",
+              "items": { "type": "string" },
+              "example": ["임원진", "군휴학자"]
+            }
+          }
+        },
+        "extra_fees": {
+          "type": "array",
+          "description": "회비 외 비용. 자격 발급, 대회 참가, 악보/장비 등 동아리마다 다름",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fee_name": { "type": "string", "example": "대회 참가비" },
+              "amount_krw": { "type": "integer", "example": 20000 },
+              "applies_to": { "type": "string", "example": "해당 행사 참가자" }
+            },
+            "required": ["fee_name", "amount_krw"]
+          }
+        },
+        "receipt_requirements": {
+          "type": "array",
+          "description": "지원금 및 정산 필수 증빙 목록",
+          "items": { "type": "string" },
+          "example": ["카드 매출전표", "상세 품목/수량이 표기된 거래명세서"]
+        }
+      }
+    },
+
+    "packing_lists": {
+      "type": "array",
+      "description": "행사별 준비물. 해당 없으면 빈 배열",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "description": "행사 이름 또는 동아리가 쓰는 유형 라벨. 고정 enum 없음",
+            "example": "봄학기 MT"
+          },
+          "clubroom_items": {
+            "type": "array",
+            "description": "동방/창고에서 챙겨갈 공용 비품",
+            "items": { "type": "string" },
+            "example": ["명찰", "구급키트", "일회용기"]
+          },
+          "safety_supplies": {
+            "type": "array",
+            "description": "안전·비상 용품",
+            "items": { "type": "string" },
+            "example": ["밴드", "소독약"]
+          },
+          "pre_order_items": {
+            "type": "array",
+            "description": "사전 택배/온라인 주문 품목",
+            "items": { "type": "string" },
+            "example": ["식자재 숙소 직배송"]
+          }
+        },
+        "required": ["event_type"]
+      }
+    },
+
+    "gifts_and_anniversaries": {
+      "type": "array",
+      "description": "명절, 스승의 날, 졸업 등 정기 챙김. 없으면 빈 배열",
+      "items": {
+        "type": "object",
+        "properties": {
+          "occasion": { "type": "string", "example": "추석 감사 선물" },
+          "target_month": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "recipients": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["지도교수님", "연습실 관리자"]
+          },
+          "budget_limit_krw": { "type": "integer", "example": 200000 },
+          "budget_source": {
+            "type": "string",
+            "description": "예: 동아리 회비, 교내 지원금, 개별 갹출"
+          },
+          "recommended_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["커피/다과 세트"]
+          },
+          "precaution": { "type": "string", "example": "포장비 포함 예산 준수" }
+        },
+        "required": ["occasion", "target_month", "recipients"]
+      }
+    },
+
+    "booth_and_promotions": {
+      "type": "array",
+      "description": "신입 환영, 축제 등 부스·홍보. 없으면 빈 배열",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_name": { "type": "string", "example": "신입생 환영 부스" },
+          "target_visitors": { "type": "integer", "example": 150 },
+          "programs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["체험 부스", "퀴즈", "굿즈 만들기"]
+          },
+          "required_supplies": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["이젤", "테이블", "홍보 포스터"]
+          },
+          "grant_benefit": {
+            "type": "string",
+            "description": "교내 지원금 가산점 등 참여 시 행정 이점"
+          }
+        },
+        "required": ["event_name"]
+      }
+    },
+
+    "group_purchases": {
+      "type": "array",
+      "description": "공동구매(장비, 유니폼, 교재 등). 없으면 빈 배열",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": { "type": "string", "example": "단체 티셔츠" },
+          "target_month": { "type": "integer", "minimum": 1, "maximum": 12, "example": 4 },
+          "purchase_criteria": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["사이즈 취합 후 일괄 주문"]
+          },
+          "caution_notes": { "type": "string" }
+        },
+        "required": ["item_name", "target_month"]
+      }
+    },
+
+    "activity_programs": {
+      "type": "array",
+      "description": "정기 활동/교육 커리큘럼(연습, 훈련, 세미나 등). 없으면 빈 배열. 종목 전용 상세는 vertical_extensions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "program_name": { "type": "string", "example": "신입 교육" },
+          "program_type": {
+            "type": "string",
+            "description": "동아리가 정하는 분류. 예: 정기연습, 자격교육, 워크숍"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "session_number": { "type": "integer", "minimum": 1 },
+                "session_theme": { "type": "string", "example": "기초 오리엔테이션" },
+                "contents": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["안전 수칙", "기본기 반복"]
+                },
+                "safety_notes": { "type": "string" }
+              },
+              "required": ["session_number", "session_theme"]
+            }
+          }
+        },
+        "required": ["program_name"]
+      }
+    },
+
+    "vertical_extensions": {
+      "type": "object",
+      "description": "장르 전용 잔여 정보. 코어 필드에 넣지 못한 종목 특화 값(자격 코스 코드, 훈련장 동선 등). 없으면 빈 객체",
+      "additionalProperties": true
+    }
+  },
+  "required": ["club_info", "events", "monthly_timelines", "financial_and_admin_rules", "packing_lists"]
+}
