@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --color-canvas: #d9f7fa;
+  --color-surface: #ffffff;
+  --color-detail: #f0f8ff;
+  --color-ink: #2f3437;
+  --color-muted: #787774;
+  --color-line: #eaeaea;
+  --color-red-bg: #fdebec;
+  --color-red-fg: #9f2f2d;
+  --color-green-bg: #edf3ec;
+  --color-green-fg: #346538;
+  --color-yellow-bg: #fbf3db;
+  --color-yellow-fg: #956400;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+::selection {
+  background: #2f3437;
+  color: #f7f6f3;
+}
+
+:focus-visible {
+  outline: 2px solid #2f3437;
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
