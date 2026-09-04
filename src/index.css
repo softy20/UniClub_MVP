@@ -14,6 +14,14 @@
   --color-green-fg: #346538;
   --color-yellow-bg: #fbf3db;
   --color-yellow-fg: #956400;
+  --color-cal-selected: #e8e8e8;
+  --color-cal-ow: #4a90c8;
+  --color-cal-aow: #e07a5f;
+  --color-cal-marine: #1d4e89;
+  --color-cal-social: #e879a9;
+  --color-cal-officer: #65a30d;
+  --color-cal-booth: #ea580c;
+  --color-cal-mt: #8b5cf6;
 }
 
 html,

@@ -1,4 +1,4 @@
-import type { BoardTask, ClubData, ClubEvent, UpcomingEvent } from "./types";
+import type { BoardTask, ClubData, ClubEvent, GiftOccasion, UpcomingEvent } from "./types";
 
 /** Demo clock for 2026 academic-year seed data. */
 export const TODAY = new Date(2026, 8, 2);
@@ -47,6 +47,11 @@ export function estimateEventDate(event: ClubEvent, academicYear: number): Date 
   return atNoon(new Date(academicYear, event.target_month - 1, dayFromWeekLabel(event.target_week)));
 }
 
+export function estimateGiftDate(gift: GiftOccasion, academicYear: number): Date {
+  if (gift.occasion.includes("추석")) return atNoon(CHUSEOK_2026);
+  return atNoon(new Date(academicYear, gift.target_month - 1, 20));
+}
+
 function flattenTasks(data: ClubData): BoardTask[] {
   const year = data.club_info.academic_year;
   const fromEvents = data.events.flatMap((event) => {
@@ -69,8 +74,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
   });
 
   const fromGifts = (data.gifts_and_anniversaries ?? []).map((gift, index) => {
-    const eventDate =
-      gift.occasion.includes("추석") ? atNoon(CHUSEOK_2026) : atNoon(new Date(year, gift.target_month - 1, 20));
+    const eventDate = estimateGiftDate(gift, year);
     const dueDate = addDays(eventDate, -14);
     return {
       id: `gift-${index}`,
@@ -83,11 +87,15 @@ function flattenTasks(data: ClubData): BoardTask[] {
       mandatory: true,
       details: [
         gift.recipients.join(", "),
-        gift.precaution,
-        gift.recommended_items?.length ? `예시: ${gift.recommended_items.join(", ")}` : null,
+        [
+          gift.precaution,
+          gift.recommended_items?.length ? `예시: ${gift.recommended_items.join(", ")}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
       ]
         .filter(Boolean)
-        .join(" · "),
+        .join("\n· "),
       checklist: [],
     };
   });

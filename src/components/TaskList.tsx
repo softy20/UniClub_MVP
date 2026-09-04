@@ -77,7 +77,7 @@ export function TaskRow({ task, done, onToggle }: TaskRowProps) {
 
       {open ? (
         <div className="mx-4 mb-3.5 rounded-[8px] border border-line bg-detail px-4 py-3">
-          <p className="text-[13px] leading-relaxed text-ink">
+          <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink">
             {task.details ?? "이 할 일에 적힌 상세 수칙이 없습니다."}
           </p>
           {task.checklist.length > 0 ? (
