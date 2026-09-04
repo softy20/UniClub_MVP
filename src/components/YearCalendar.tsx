@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CaretDown, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import type { ClubData } from "../lib/types";
 import { TODAY } from "../lib/board";
 import {
@@ -43,6 +43,9 @@ export function YearCalendar({ data }: YearCalendarProps) {
   const [filter, setFilter] = useState<LegendId | null>(null);
   const [selected, setSelected] = useState<Date | null>(null);
   const [photos, setPhotos] = useState<Record<string, string[]>>(() => loadPhotos());
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(() => TODAY.getFullYear());
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   const year = cursor.getFullYear();
   const monthIndex = cursor.getMonth();
@@ -76,7 +79,39 @@ export function YearCalendar({ data }: YearCalendarProps) {
   function shiftMonth(delta: number) {
     setCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
     setSelected(null);
+    setPickerOpen(false);
   }
+
+  function togglePicker() {
+    setPickerOpen((open) => {
+      if (!open) setPickerYear(year);
+      return !open;
+    });
+  }
+
+  function jumpToMonth(nextMonthIndex: number) {
+    setCursor(new Date(pickerYear, nextMonthIndex, 1));
+    setSelected(null);
+    setPickerOpen(false);
+  }
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setPickerOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pickerOpen]);
 
   function addPhoto(eventId: string, file: File) {
     const reader = new FileReader();
@@ -101,15 +136,76 @@ export function YearCalendar({ data }: YearCalendarProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto p-4 lg:p-5">
         <section className="rounded-[12px] border border-line bg-surface">
           <header className="flex items-center justify-between border-b border-line px-5 py-4">
-            <h1 className="tabular text-[16px] font-semibold tracking-[-0.02em] text-ink">
-              {year}년 {monthIndex + 1}월
-            </h1>
+            <div ref={pickerRef} className="relative">
+              <h1 className="m-0 text-[16px] font-semibold tracking-[-0.02em] text-ink">
+                <button
+                  type="button"
+                  aria-expanded={pickerOpen}
+                  aria-haspopup="dialog"
+                  aria-label="연도와 월 선택"
+                  onClick={togglePicker}
+                  className="flex cursor-pointer items-center gap-1 tabular tracking-[-0.02em]"
+                >
+                  {year}년 {monthIndex + 1}월
+                  <CaretDown
+                    size={14}
+                    weight="bold"
+                    aria-hidden="true"
+                    className={`text-muted transition-transform duration-150 ${pickerOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </h1>
+              {pickerOpen ? (
+                <div
+                  role="dialog"
+                  aria-label="연도와 월 선택"
+                  className="absolute left-0 top-[calc(100%+8px)] z-20 w-[220px] rounded-[12px] border border-line bg-surface p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      aria-label="이전 해"
+                      onClick={() => setPickerYear((current) => current - 1)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                    >
+                      <CaretLeft size={14} weight="bold" aria-hidden="true" />
+                    </button>
+                    <p className="tabular text-[14px] font-medium text-ink">{pickerYear}년</p>
+                    <button
+                      type="button"
+                      aria-label="다음 해"
+                      onClick={() => setPickerYear((current) => current + 1)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                    >
+                      <CaretRight size={14} weight="bold" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {Array.from({ length: 12 }, (_, index) => {
+                      const active = pickerYear === year && index === monthIndex;
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => jumpToMonth(index)}
+                          className={`cursor-pointer rounded-[6px] py-2 text-[13px] text-ink ${
+                            active ? "bg-cal-selected font-medium" : ""
+                          }`}
+                        >
+                          {index + 1}월
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
             <div className="flex gap-1">
               <button
                 type="button"
                 aria-label="이전 달"
                 onClick={() => shiftMonth(-1)}
-                className="flex size-8 items-center justify-center rounded-[6px] text-muted"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
               >
                 <CaretLeft size={14} weight="bold" aria-hidden="true" />
               </button>
@@ -117,7 +213,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                 type="button"
                 aria-label="다음 달"
                 onClick={() => shiftMonth(1)}
-                className="flex size-8 items-center justify-center rounded-[6px] text-muted"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
               >
                 <CaretRight size={14} weight="bold" aria-hidden="true" />
               </button>
@@ -144,7 +240,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                   aria-selected={isSelected}
                   aria-expanded={isSelected}
                   onClick={() => toggleDay(day)}
-                  className="flex min-h-[64px] flex-col items-center pt-1.5"
+                  className="flex min-h-[64px] cursor-pointer flex-col items-center pt-1.5"
                 >
                   <span
                     className={`tabular inline-flex size-8 items-center justify-center text-[14px] text-ink ${
@@ -181,7 +277,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => toggleFilter(item.id)}
-                  className={`flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] text-ink ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] text-ink ${
                     pressed ? "bg-line" : ""
                   }`}
                 >

@@ -26,7 +26,7 @@ export function TaskRow({ task, done, onToggle }: TaskRowProps) {
           onClick={() => onToggle(task.id)}
           aria-pressed={done}
           aria-label={done ? `${task.name} 완료 취소` : `${task.name} 완료`}
-          className="flex w-11 shrink-0 items-center justify-center text-ink"
+          className="flex w-11 shrink-0 cursor-pointer items-center justify-center text-ink"
         >
           {done ? (
             <CheckSquare size={22} weight="bold" aria-hidden="true" />
@@ -39,7 +39,7 @@ export function TaskRow({ task, done, onToggle }: TaskRowProps) {
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="min-w-0 flex-1 px-1 py-3.5 text-left"
+          className="min-w-0 flex-1 cursor-pointer px-1 py-3.5 text-left"
         >
           <span className="flex items-start gap-2">
             <span className="min-w-0 flex-1">

@@ -29,7 +29,7 @@ export function Sidebar({ clubName, year, current, onNavigate }: SidebarProps) {
           const Icon = item.icon;
           const isCurrent = item.enabled && item.id === current;
           const className = isCurrent
-            ? "flex items-center gap-2.5 rounded-[6px] bg-canvas px-3 py-2.5 text-[14px] font-medium text-ink"
+            ? "flex cursor-pointer items-center gap-2.5 rounded-[6px] bg-canvas px-3 py-2.5 text-[14px] font-medium text-ink"
             : "flex items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-[14px] text-muted";
           if (!item.enabled) {
             return (
@@ -44,7 +44,7 @@ export function Sidebar({ clubName, year, current, onNavigate }: SidebarProps) {
               key={item.id}
               href={`#${item.id}`}
               aria-current={isCurrent ? "page" : undefined}
-              className={className}
+              className={`${className} cursor-pointer`}
               onClick={(event) => {
                 event.preventDefault();
                 onNavigate(item.id);
