@@ -1,7 +1,5 @@
 import type { BoardTask, ClubData, ClubEvent, GiftOccasion, UpcomingEvent } from "./types";
-
-/** Demo clock for 2026 academic-year seed data. */
-export const TODAY = new Date(2026, 8, 2);
+import { readKst } from "./kst";
 
 const CHUSEOK_2026 = new Date(2026, 8, 25);
 
@@ -103,7 +101,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
   return [...fromEvents, ...fromGifts];
 }
 
-export function buildBoard(data: ClubData, today: Date = TODAY) {
+export function buildBoard(data: ClubData, today: Date = readKst().civil) {
   const weekStart = startOfWeek(today);
   const weekEnd = endOfWeek(today);
   const nextStart = addDays(weekEnd, 1);
@@ -164,7 +162,7 @@ export function formatRange(start: Date, end: Date): string {
   return `${start.getMonth() + 1}/${start.getDate()}–${end.getMonth() + 1}/${end.getDate()}`;
 }
 
-export function taskDdayLabel(dueDate: Date, today: Date = TODAY): { text: string; tone: "late" | "today" | "soon" | "later" } {
+export function taskDdayLabel(dueDate: Date, today: Date = readKst().civil): { text: string; tone: "late" | "today" | "soon" | "later" } {
   const days = dayDiff(today, dueDate);
   if (days < 0) return { text: `지연 ${Math.abs(days)}일`, tone: "late" };
   if (days === 0) return { text: "오늘", tone: "today" };

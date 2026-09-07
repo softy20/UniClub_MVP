@@ -3,13 +3,18 @@ import club from "./data/club.json";
 import { HomeBoard } from "./components/HomeBoard";
 import { Sidebar, type AppPage } from "./components/Sidebar";
 import { YearCalendar } from "./components/YearCalendar";
-import { TODAY, buildBoard, loadDoneIds, saveDoneIds } from "./lib/board";
+import { buildBoard, loadDoneIds, saveDoneIds } from "./lib/board";
+import { useKstNow } from "./lib/kst";
 import type { ClubData } from "./lib/types";
 
 const data = club as ClubData;
 
 export default function App() {
-  const board = useMemo(() => buildBoard(data, TODAY), []);
+  const clock = useKstNow();
+  const board = useMemo(
+    () => buildBoard(data, clock.civil),
+    [clock.year, clock.month, clock.day],
+  );
   const [page, setPage] = useState<AppPage>("year");
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
 
@@ -45,19 +50,19 @@ export default function App() {
             nextEnd={board.nextEnd}
             done={done}
             onToggle={toggle}
+            clock={clock}
           />
         </div>
       ) : (
-        <div className="flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
-          <div className="lg:h-full lg:w-[232px] lg:shrink-0">
-            <Sidebar
-              clubName={data.club_info.club_name}
-              year={data.club_info.academic_year}
-              current={page}
-              onNavigate={setPage}
-            />
-          </div>
-          <YearCalendar data={data} />
+        <div className="flex min-h-screen lg:h-screen lg:flex-row lg:overflow-hidden">
+          <Sidebar
+            clubName={data.club_info.club_name}
+            year={data.club_info.academic_year}
+            current={page}
+            onNavigate={setPage}
+            rail
+          />
+          <YearCalendar data={data} clock={clock} />
         </div>
       )}
     </div>

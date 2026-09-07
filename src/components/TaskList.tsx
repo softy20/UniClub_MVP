@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { CaretDown, CheckSquare, Square } from "@phosphor-icons/react";
 import type { BoardTask } from "../lib/types";
-import { TODAY, formatDate, taskDdayLabel } from "../lib/board";
+import { formatDate, taskDdayLabel } from "../lib/board";
 
 type TaskRowProps = {
   task: BoardTask;
   done: boolean;
   onToggle: (id: string) => void;
+  today: Date;
 };
 
-export function TaskRow({ task, done, onToggle }: TaskRowProps) {
+export function TaskRow({ task, done, onToggle, today }: TaskRowProps) {
   const [open, setOpen] = useState(false);
-  const dday = taskDdayLabel(task.dueDate, TODAY);
+  const dday = taskDdayLabel(task.dueDate, today);
   const toneClass =
     dday.tone === "late"
       ? "text-red-fg"

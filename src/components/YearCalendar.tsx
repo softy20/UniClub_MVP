@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CaretDown, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { CaretDown, CaretLeft, CaretRight, X } from "@phosphor-icons/react";
 import type { ClubData } from "../lib/types";
-import { TODAY } from "../lib/board";
+import { formatKstDateTime, readKst, type KstClock } from "../lib/kst";
 import {
   LEGEND,
   WEEKDAYS,
@@ -21,6 +21,7 @@ const PHOTO_KEY = "uniclub-cal-photos-v1";
 
 type YearCalendarProps = {
   data: ClubData;
+  clock: KstClock;
 };
 
 function loadPhotos(): Record<string, string[]> {
@@ -37,14 +38,17 @@ function savePhotos(photos: Record<string, string[]>) {
   localStorage.setItem(PHOTO_KEY, JSON.stringify(photos));
 }
 
-export function YearCalendar({ data }: YearCalendarProps) {
+export function YearCalendar({ data, clock }: YearCalendarProps) {
   const allEvents = useMemo(() => buildCalendarEvents(data), [data]);
-  const [cursor, setCursor] = useState(() => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
+  const [cursor, setCursor] = useState(() => {
+    const now = readKst();
+    return new Date(now.year, now.month - 1, 1);
+  });
   const [filter, setFilter] = useState<LegendId | null>(null);
   const [selected, setSelected] = useState<Date | null>(null);
   const [photos, setPhotos] = useState<Record<string, string[]>>(() => loadPhotos());
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerYear, setPickerYear] = useState(() => TODAY.getFullYear());
+  const [pickerYear, setPickerYear] = useState(() => readKst().year);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const year = cursor.getFullYear();
@@ -72,13 +76,15 @@ export function YearCalendar({ data }: YearCalendarProps) {
   }
 
   function toggleDay(day: number) {
-    const next = new Date(year, monthIndex, day);
-    setSelected((current) => (current && sameDay(current, next) ? null : next));
+    setSelected(new Date(year, monthIndex, day));
+  }
+
+  function closePanel() {
+    setSelected(null);
   }
 
   function shiftMonth(delta: number) {
     setCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
-    setSelected(null);
     setPickerOpen(false);
   }
 
@@ -91,7 +97,6 @@ export function YearCalendar({ data }: YearCalendarProps) {
 
   function jumpToMonth(nextMonthIndex: number) {
     setCursor(new Date(pickerYear, nextMonthIndex, 1));
-    setSelected(null);
     setPickerOpen(false);
   }
 
@@ -132,11 +137,12 @@ export function YearCalendar({ data }: YearCalendarProps) {
     : [];
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:h-screen lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto p-4 lg:p-5">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="mx-auto flex w-full max-w-[700px] flex-col gap-4 p-4 lg:p-5">
         <section className="rounded-[12px] border border-line bg-surface">
-          <header className="flex items-center justify-between border-b border-line px-5 py-4">
-            <div ref={pickerRef} className="relative">
+          <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+            <div ref={pickerRef} className="relative min-w-0">
               <h1 className="m-0 text-[16px] font-semibold tracking-[-0.02em] text-ink">
                 <button
                   type="button"
@@ -144,7 +150,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                   aria-haspopup="dialog"
                   aria-label="연도와 월 선택"
                   onClick={togglePicker}
-                  className="flex cursor-pointer items-center gap-1 tabular tracking-[-0.02em]"
+                  className="flex cursor-pointer items-center gap-1 rounded-[6px] px-1.5 py-0.5 tabular tracking-[-0.02em] transition-colors duration-150 hover:bg-[#e6f5f5]"
                 >
                   {year}년 {monthIndex + 1}월
                   <CaretDown
@@ -166,7 +172,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                       type="button"
                       aria-label="이전 해"
                       onClick={() => setPickerYear((current) => current - 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]"
                     >
                       <CaretLeft size={14} weight="bold" aria-hidden="true" />
                     </button>
@@ -175,7 +181,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                       type="button"
                       aria-label="다음 해"
                       onClick={() => setPickerYear((current) => current + 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]"
                     >
                       <CaretRight size={14} weight="bold" aria-hidden="true" />
                     </button>
@@ -188,7 +194,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                           key={index}
                           type="button"
                           onClick={() => jumpToMonth(index)}
-                          className={`cursor-pointer rounded-[6px] py-2 text-[13px] text-ink ${
+                          className={`cursor-pointer rounded-[6px] py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-[#e6f5f5] ${
                             active ? "bg-cal-selected font-medium" : ""
                           }`}
                         >
@@ -200,12 +206,13 @@ export function YearCalendar({ data }: YearCalendarProps) {
                 </div>
               ) : null}
             </div>
+            <p className="tabular shrink-0 text-[12px] text-muted">{formatKstDateTime(clock)}</p>
             <div className="flex gap-1">
               <button
                 type="button"
                 aria-label="이전 달"
                 onClick={() => shiftMonth(-1)}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]"
               >
                 <CaretLeft size={14} weight="bold" aria-hidden="true" />
               </button>
@@ -213,7 +220,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                 type="button"
                 aria-label="다음 달"
                 onClick={() => shiftMonth(1)}
-                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]"
               >
                 <CaretRight size={14} weight="bold" aria-hidden="true" />
               </button>
@@ -232,6 +239,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
               }
               const dayDate = new Date(year, monthIndex, day);
               const isSelected = selected !== null && sameDay(selected, dayDate);
+              const isToday = clock.year === year && clock.month === monthIndex + 1 && clock.day === day;
               const dots = dotsForEvents(eventsOn(day), filter);
               return (
                 <button
@@ -240,12 +248,12 @@ export function YearCalendar({ data }: YearCalendarProps) {
                   aria-selected={isSelected}
                   aria-expanded={isSelected}
                   onClick={() => toggleDay(day)}
-                  className="flex min-h-[64px] cursor-pointer flex-col items-center pt-1.5"
+                  className="flex min-h-[64px] cursor-pointer flex-col items-center rounded-[6px] pt-1.5 transition-colors duration-150 hover:bg-[#e6f5f5]"
                 >
                   <span
-                    className={`tabular inline-flex size-8 items-center justify-center text-[14px] text-ink ${
+                    className={`box-border tabular inline-flex size-8 items-center justify-center text-[14px] text-ink ${
                       isSelected ? "rounded-full bg-cal-selected" : ""
-                    }`}
+                    } ${isToday ? "rounded-full border-[1.5px] border-[#2563EB]" : ""}`}
                   >
                     {day}
                   </span>
@@ -277,7 +285,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                   type="button"
                   aria-pressed={pressed}
                   onClick={() => toggleFilter(item.id)}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] text-ink ${
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 text-[13px] text-ink transition-colors duration-150 hover:bg-[#e6f5f5] ${
                     pressed ? "bg-line" : ""
                   }`}
                 >
@@ -289,20 +297,29 @@ export function YearCalendar({ data }: YearCalendarProps) {
           </div>
         </section>
       </div>
+      </div>
 
       <aside
-        className={`min-h-0 shrink-0 overflow-hidden border-line bg-surface transition-[width] duration-200 ease-out max-lg:border-t lg:h-full lg:border-l ${
-          panelOpen ? "w-full lg:w-[340px]" : "w-0 max-lg:h-0 max-lg:border-0"
+        className={`flex h-full shrink-0 flex-col overflow-hidden bg-surface transition-[width] duration-200 ease-out ${
+          panelOpen ? "w-[min(340px,100%)] border-l border-line" : "w-0"
         }`}
         aria-hidden={!panelOpen}
-        aria-label={selected ? formatPanelDate(selected) : undefined}
+        aria-label={selected ? formatPanelDate(selected, clock.year) : undefined}
       >
         {selected ? (
-          <div className="flex h-full w-full flex-col overflow-auto lg:w-[340px]">
-            <header className="border-b border-line px-5 py-4">
+          <div className="flex h-full w-[min(340px,100vw)] flex-col overflow-auto">
+            <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
               <h2 className="text-[16px] font-semibold tracking-[-0.02em] text-ink">
-                {formatPanelDate(selected)}
+                {formatPanelDate(selected, clock.year)}
               </h2>
+              <button
+                type="button"
+                aria-label="닫기"
+                onClick={closePanel}
+                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]"
+              >
+                <X size={18} weight="bold" aria-hidden="true" />
+              </button>
             </header>
             <div className="flex-1 px-5 py-4">
               {selectedEvents.length === 0 ? (
@@ -334,7 +351,7 @@ export function YearCalendar({ data }: YearCalendarProps) {
                             ))}
                           </ul>
                         ) : null}
-                        <label className="mt-2 inline-flex cursor-pointer rounded-[6px] border border-line px-3 py-1.5 text-[13px] text-ink">
+                        <label className="mt-2 inline-flex cursor-pointer rounded-[6px] border border-line px-3 py-1.5 text-[13px] text-ink transition-colors duration-150 hover:bg-[#e6f5f5]">
                           + 사진 첨부
                           <input
                             type="file"

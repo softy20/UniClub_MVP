@@ -1,5 +1,5 @@
 import type { ClubData, ClubEvent, GiftOccasion } from "./types";
-import { TODAY, estimateEventDate, estimateGiftDate } from "./board";
+import { estimateEventDate, estimateGiftDate } from "./board";
 
 export const LEGEND = [
   { id: "ow", label: "OW", colorClass: "bg-cal-ow" },
@@ -52,7 +52,7 @@ export function sameDay(a: Date, b: Date): boolean {
   return dateKey(a) === dateKey(b);
 }
 
-export function formatPanelDate(date: Date, todayYear: number = TODAY.getFullYear()): string {
+export function formatPanelDate(date: Date, todayYear: number): string {
   const body = `${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAYS[date.getDay()]}`;
   if (date.getFullYear() === todayYear) return body;
   return `${date.getFullYear()}년 ${body}`;
