@@ -7,6 +7,7 @@ import { buildBoard, loadDoneIds, saveDoneIds } from "./lib/board";
 import { useKstNow } from "./lib/kst";
 import type { ClubData } from "./lib/types";
 
+//
 const data = club as ClubData;
 
 export default function App() {
