@@ -6,3 +6,4 @@ dist
 .impeccable/review
 .impeccable/build
 .impeccable/mocks
+.env
