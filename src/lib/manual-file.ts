@@ -10,6 +10,9 @@ export async function extractManualText(file: File): Promise<string> {
   if (ext === ".hwp" || ext === ".hwpx") {
     throw new Error("HWP는 현재 지원하지 않습니다. TXT, MD, DOCX 파일을 사용해 주세요.");
   }
+  if (ext === ".pdf") {
+    throw new Error("PDF는 현재 지원하지 않습니다. TXT, MD, DOCX로 올려 주세요.");
+  }
   if (ext === ".docx") {
     const mammoth = await import("mammoth/mammoth.browser");
     const result = await mammoth.default.extractRawText({ arrayBuffer: await file.arrayBuffer() });

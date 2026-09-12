@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { extractManualText } from "../lib/manual-file";
 import type {
   ClarifyingQuestion,
@@ -45,7 +45,68 @@ type ParseOk = {
 type ApiError = { ok?: false; error?: string };
 
 const MAX_TURNS = 4;
-const ACCEPT = ".txt,.md,.markdown,.docx,.hwp,.hwpx";
+const ACCEPT = ".txt,.md,.markdown,.docx,.pdf,.hwp,.hwpx";
+
+function FileDropzone({ onFileSelect }: { onFileSelect: (file: File) => void }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave() {
+    setIsDragging(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    const file = event.dataTransfer.files[0];
+    if (file) onFileSelect(file);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) onFileSelect(file);
+    event.target.value = "";
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => fileInputRef.current?.click()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          fileInputRef.current?.click();
+        }
+      }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="cursor-pointer rounded-lg border-2 border-dashed p-8 text-center"
+      style={{
+        borderColor: isDragging ? "var(--accent)" : "var(--border2)",
+        background: isDragging ? "var(--color-nav-active)" : "var(--card2)",
+      }}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPT}
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <p className="text-sm font-medium text-fg2">
+        파일을 드래그하여 올리거나 <span className="text-accent underline">여기 클릭</span>하여 탐색기 열기
+      </p>
+      <p className="mt-2 text-[12px] text-fg3">DOCX, TXT, MD 지원 (PDF·HWP는 DOCX로 변환 후 업로드)</p>
+    </div>
+  );
+}
 
 function isOtherOption(option: QuestionOption): boolean {
   return option.is_other === true || option.id === "other" || option.label.includes("기타");
@@ -249,27 +310,19 @@ export function ManualImportWizard() {
               <p>지원: TXT, MD, DOCX. HWP는 미지원이므로 DOCX로 변환 후 올려 주세요.</p>
               <p className="mt-1">부서/직책 목록, 연간 행사, 사전 준비 기간(D-n), 담당 부서가 있으면 정확도가 높아집니다.</p>
             </div>
+            <div className="mb-3">
+              <FileDropzone onFileSelect={(file) => void onFile(file)} />
+              {fileName ? <p className="mt-2 text-[12px] text-fg3">선택됨: {fileName}</p> : null}
+            </div>
+            {fileError ? <p className="mb-3 text-sm text-red-700">{fileError}</p> : null}
             <label className="mb-2 block text-sm font-medium text-fg">매뉴얼 텍스트</label>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={14}
               className="mb-3 w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
-              placeholder="TXT / MD 내용을 붙여넣거나 DOCX를 업로드하세요."
+              placeholder="TXT / MD 내용을 붙여넣거나 위에서 파일을 올리세요."
             />
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <label className="font-display cursor-pointer rounded-lg border border-border bg-card2 px-3 py-2 text-sm text-fg2">
-                파일 업로드
-                <input
-                  type="file"
-                  accept={ACCEPT}
-                  className="hidden"
-                  onChange={(event) => void onFile(event.target.files?.[0])}
-                />
-              </label>
-              <span className="text-[12px] text-fg3">{fileName || "TXT, MD, DOCX · HWP 미지원"}</span>
-            </div>
-            {fileError ? <p className="mb-3 text-sm text-red-700">{fileError}</p> : null}
             <button
               type="button"
               disabled={loading}
