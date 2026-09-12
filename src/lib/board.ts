@@ -25,7 +25,7 @@ function endOfWeek(date: Date): Date {
   return addDays(startOfWeek(date), 6);
 }
 
-function dayDiff(from: Date, to: Date): number {
+export function dayDiff(from: Date, to: Date): number {
   const ms = atNoon(to).getTime() - atNoon(from).getTime();
   return Math.round(ms / 86_400_000);
 }

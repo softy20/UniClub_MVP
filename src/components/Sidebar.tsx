@@ -1,106 +1,121 @@
-import { useState } from "react";
-import { CalendarBlank, House, List, Wallet } from "@phosphor-icons/react";
+import { CalendarBlank, CheckSquare, Lightning, SquaresFour } from "@phosphor-icons/react";
+import { CATS, type FigmaCat, type OpsEvent } from "../lib/ops";
 
-export type AppPage = "home" | "year";
+export type AppPage = "dashboard" | "calendar" | "tasks" | "manual";
 
 const NAV = [
-  { id: "home", label: "홈", icon: House, enabled: true },
-  { id: "year", label: "연간 일정", icon: CalendarBlank, enabled: true },
-  { id: "finance", label: "회계", icon: Wallet, enabled: false },
+  { id: "dashboard", label: "대시보드", icon: SquaresFour },
+  { id: "calendar", label: "캘린더", icon: CalendarBlank },
+  { id: "tasks", label: "할 일 목록", icon: CheckSquare },
+  { id: "manual", label: "AI 파싱", icon: Lightning },
 ] as const;
 
 type SidebarProps = {
-  clubName: string;
-  year: number;
   current: AppPage;
   onNavigate: (page: AppPage) => void;
-  rail?: boolean;
+  events: OpsEvent[];
+  clubName: string;
+  overallPct: number;
 };
 
-export function Sidebar({ clubName, year, current, onNavigate, rail = false }: SidebarProps) {
-  const [pinned, setPinned] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const expanded = !rail || pinned || hovered;
+export function Sidebar({ current, onNavigate, events, clubName, overallPct }: SidebarProps) {
+  const counts = events.reduce(
+    (acc, event) => {
+      acc[event.category] = (acc[event.category] ?? 0) + 1;
+      return acc;
+    },
+    {} as Partial<Record<FigmaCat, number>>,
+  );
 
   return (
-    <div className={rail ? "relative z-30 w-14 shrink-0 self-stretch lg:h-full lg:w-[232px]" : "lg:row-span-2 lg:min-h-screen"}>
-      <aside
-        className={
-          rail
-            ? `absolute inset-y-0 left-0 z-30 flex h-full flex-col border-r border-line bg-surface transition-[width] duration-200 ease-out lg:static lg:w-[232px] ${
-                expanded ? "w-[232px]" : "w-14"
-              }`
-            : "flex flex-col border-b border-line bg-surface lg:h-full lg:border-r lg:border-b-0"
-        }
-        onMouseEnter={() => {
-          if (rail) setHovered(true);
-        }}
-        onMouseLeave={() => {
-          if (rail) setHovered(false);
-        }}
-      >
-        <div className={`border-b border-line ${rail ? "px-2 py-3 lg:px-5 lg:py-5" : "px-5 py-4 lg:py-5"}`}>
-          <div className="flex items-center gap-2">
-            {rail ? (
-              <button
-                type="button"
-                aria-label="메뉴"
-                aria-expanded={expanded}
-                onClick={() => setPinned((value) => !value)}
-                className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-ink transition-colors duration-150 hover:bg-[#e6f5f5] lg:hidden"
-              >
-                <List size={18} weight="bold" aria-hidden="true" />
-              </button>
-            ) : null}
-            <div className={expanded ? "min-w-0" : "hidden min-w-0 lg:block"}>
-              <p className="text-[15px] font-semibold tracking-[-0.02em] text-ink">UniClub</p>
-              <p className="mt-1 text-[13px] text-muted">
-                {clubName} · {year}
-              </p>
-            </div>
+    <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="border-b border-border px-5 py-5">
+        <div className="mb-1 flex items-center gap-2.5">
+          <div
+            className="font-display flex size-7 items-center justify-center rounded-lg text-sm font-bold text-white"
+            style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}
+          >
+            U
+          </div>
+          <div>
+            <p className="font-display text-sm font-bold text-fg">UniClub</p>
+            <p className="text-[11px] text-fg3">MVP v0.1</p>
           </div>
         </div>
-        <nav
-          className={
-            rail
-              ? "flex flex-1 flex-col gap-1 p-2 lg:p-3"
-              : "flex flex-row gap-1 p-2 lg:flex-1 lg:flex-col lg:p-3"
-          }
-          aria-label="임원 메뉴"
-        >
+        <div className="mt-3 rounded-lg bg-card px-2 py-1.5">
+          <p className="mb-1 text-[13px] text-fg3">2학기 전체 진행률</p>
+          <div className="flex items-center gap-2">
+            <div className="h-1 flex-1 rounded-full bg-border2">
+              <div className="h-full rounded-full bg-[#6366f1]" style={{ width: `${overallPct}%` }} />
+            </div>
+            <span className="text-[12px] font-bold text-accent2">{overallPct}%</span>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="임원 메뉴">
+        <p className="mb-2 px-2 text-[12px] tracking-widest text-fg3 uppercase">메뉴</p>
+        <div className="flex flex-col gap-0.5">
           {NAV.map((item) => {
             const Icon = item.icon;
-            const isCurrent = item.enabled && item.id === current;
-            const className = isCurrent
-              ? "flex cursor-pointer items-center gap-2.5 rounded-[6px] bg-canvas px-3 py-2.5 text-[14px] font-medium text-ink transition-colors duration-150 hover:bg-[#e6f5f5]"
-              : "flex cursor-pointer items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-[14px] text-muted transition-colors duration-150 hover:bg-[#e6f5f5]";
-            const label = <span className={expanded ? "truncate" : "hidden lg:inline"}>{item.label}</span>;
-            if (!item.enabled) {
-              return (
-                <span key={item.id} className={`${className} cursor-default hover:bg-transparent ${rail && !expanded ? "lg:gap-2.5 max-lg:justify-center max-lg:px-0" : ""}`}>
-                  <Icon size={18} weight="bold" aria-hidden="true" />
-                  {label}
-                </span>
-              );
-            }
+            const active = item.id === current;
             return (
-              <a
+              <button
                 key={item.id}
-                href={`#${item.id}`}
-                aria-current={isCurrent ? "page" : undefined}
-                className={`${className} cursor-pointer ${rail && !expanded ? "max-lg:justify-center max-lg:px-0" : ""}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onNavigate(item.id);
+                type="button"
+                onClick={() => onNavigate(item.id)}
+                aria-current={active ? "page" : undefined}
+                className="font-display flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium"
+                style={{
+                  background: active ? "var(--color-nav-active)" : "transparent",
+                  color: active ? "var(--accent2)" : "var(--fg3)",
+                  border: active ? "1px solid var(--color-nav-line)" : "1px solid transparent",
                 }}
               >
                 <Icon size={18} weight="bold" aria-hidden="true" />
-                {label}
-              </a>
+                {item.label}
+              </button>
             );
           })}
-        </nav>
-      </aside>
-    </div>
+        </div>
+
+        <div className="mt-6">
+          <p className="mb-2 px-2 text-[12px] tracking-widest text-fg3 uppercase">카테고리</p>
+          <div className="flex flex-col gap-0.5">
+            {(Object.entries(CATS) as [string, (typeof CATS)[FigmaCat]][]).map(([key, item]) => {
+              const cat = Number(key) as FigmaCat;
+              const count = counts[cat] ?? 0;
+              if (count === 0) return null;
+              return (
+                <div key={key} className="flex items-center gap-2 px-3 py-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="font-display flex-1 text-xs text-fg3">{item.label}</span>
+                  <span className="text-[12px] text-fg3">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
+      <div className="border-t border-border px-4 py-4">
+        <div className="flex items-center gap-2.5">
+          <div className="font-display flex size-8 items-center justify-center rounded-full bg-[#6366f1] text-sm font-bold text-white">
+            {clubName.slice(0, 1)}
+          </div>
+          <div className="min-w-0">
+            <p className="font-display text-xs font-medium text-fg">{clubName}</p>
+            <p className="text-[12px] text-fg3">임원 보드</p>
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 }
+
+export const PAGE_LABEL: Record<AppPage, string> = {
+  dashboard: "대시보드",
+  calendar: "캘린더",
+  tasks: "할 일 목록",
+  manual: "AI 파싱",
+};
