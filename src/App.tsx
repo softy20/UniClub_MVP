@@ -4,6 +4,7 @@ import { AiParsePage } from "./components/AiParsePage";
 import { DashboardPage } from "./components/DashboardPage";
 import { EventPanel } from "./components/EventPanel";
 import { MakeCalendar } from "./components/MakeCalendar";
+import { ManualImportWizard } from "./components/ManualImportWizard";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
@@ -18,6 +19,7 @@ export default function App() {
   const [page, setPage] = useState<AppPage>("dashboard");
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const events = useMemo(() => buildOpsEvents(data, clock.civil, done), [clock.year, clock.month, clock.day, done]);
   const selected = events.find((event) => event.id === selectedId) ?? null;
@@ -53,12 +55,24 @@ export default function App() {
       <main className="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto">
         <header className="flex shrink-0 items-center justify-between border-b border-border bg-bg2 px-6 py-4">
           <div>
-            <h1 className="font-display text-lg font-bold text-fg">{PAGE_LABEL[page]}</h1>
+            <h1 className="font-display text-lg font-bold text-fg">
+              {wizardOpen ? "부서표 온보딩" : PAGE_LABEL[page]}
+            </h1>
             <p className="mt-0.5 text-[12px] text-fg3">
               {data.club_info.academic_year}년 · {data.club_info.club_name}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setWizardOpen((open) => !open);
+                setSelectedId(null);
+              }}
+              className="h-[29px] cursor-pointer rounded-md border border-border bg-card px-2.5 text-[12px] font-semibold text-fg3"
+            >
+              {wizardOpen ? "보드로" : "M2 온보딩"}
+            </button>
             <div className="flex h-[29px] items-center gap-1.5 rounded-md bg-card px-2.5">
               <span className="pulse-dot size-[7px] shrink-0 rounded-full bg-green-500" />
               <span className="tabular text-[13px] font-semibold text-fg3">
@@ -69,18 +83,19 @@ export default function App() {
         </header>
 
         <div className="min-h-0 flex-1">
-          {page === "dashboard" ? (
+          {wizardOpen ? <ManualImportWizard /> : null}
+          {!wizardOpen && page === "dashboard" ? (
             <DashboardPage
               events={events}
               officerCount={data.club_info.roles.length}
               onSelect={(event) => setSelectedId(event.id)}
             />
           ) : null}
-          {page === "calendar" ? (
+          {!wizardOpen && page === "calendar" ? (
             <MakeCalendar events={events} clock={clock} onSelect={(event) => setSelectedId(event.id)} />
           ) : null}
-          {page === "tasks" ? <TasksPage events={events} onToggle={toggle} /> : null}
-          {page === "manual" ? <AiParsePage /> : null}
+          {!wizardOpen && page === "tasks" ? <TasksPage events={events} onToggle={toggle} /> : null}
+          {!wizardOpen && page === "manual" ? <AiParsePage /> : null}
         </div>
       </main>
 

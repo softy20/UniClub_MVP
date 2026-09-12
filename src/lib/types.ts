@@ -64,3 +64,29 @@ export type UpcomingEvent = {
   daysLeft: number;
   location?: string;
 };
+
+export type RoleDefinition = {
+  role_name: string;
+  aliases: string[];
+  description?: string;
+};
+
+export type ClubProfile = {
+  club_name: string;
+  academic_year: number;
+  roles: RoleDefinition[];
+  default_role: string;
+  locked: boolean;
+};
+
+export type OnboardingQuestionCategory = "roles" | "aliases" | "default_role";
+
+export type OnboardingQuestion = {
+  category: OnboardingQuestionCategory;
+  question: string;
+};
+
+export type OnboardingChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
