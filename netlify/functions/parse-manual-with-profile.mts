@@ -1,14 +1,14 @@
 import type { ClubProfile } from "../../src/lib/types.ts";
 import { createAnthropic, MODEL_ID, parseModelJson, textFromContent } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
-import { constrainClubData, isClubData, isClubProfile, lockClubProfile } from "./_shared/schema.ts";
+import { constrainClubData, currentAcademicYear, isClubData, isClubProfile, lockClubProfile } from "./_shared/schema.ts";
 
 type ParseBody = {
   text?: unknown;
   profile?: unknown;
 };
 
-function buildSystemPrompt(profile: ClubProfile): string {
+function buildSystemPrompt(profile: ClubProfile, currentYear: number): string {
   const roleLines = profile.roles
     .map((role) => {
       const aliases = role.aliases.length > 0 ? ` (별칭: ${role.aliases.join(", ")})` : "";
@@ -17,6 +17,8 @@ function buildSystemPrompt(profile: ClubProfile): string {
     .join("\n");
 
   return `너는 동아리 인수인계 매뉴얼에서 연간 일정과 세부 TO-DO를 추출하는 오퍼레이션 파서다.
+
+현재 학년도는 ${currentYear}년이다. 매뉴얼에 과거 연도가 적혀 있어도 모든 일정과 academic_year는 ${currentYear}년을 기준으로 계산하라.
 
 고정된 부서표(ClubProfile)가 이미 잠겨 있다. 이 제약을 절대 위반하지 마라.
 - 담당자(assigned_role)는 반드시 아래 role_name 중에서만 선택하라. 이외 직책을 절대로 생성하지 마라.
@@ -29,7 +31,7 @@ ${roleLines}
 
 기본 역할: ${profile.default_role}
 동아리명: ${profile.club_name}
-학년도: ${profile.academic_year}
+학년도: ${currentYear}
 
 그 외 규칙:
 - 출력은 반드시 순수 JSON 객체 하나만 반환한다. 마크다운, 코드펜스, 설명 문장을 절대 포함하지 마라.
@@ -98,18 +100,19 @@ export default async (req: Request) => {
   if (!isClubProfile(body.profile)) return errorResponse("Invalid ClubProfile", 400);
   if (!body.profile.locked) return errorResponse("ClubProfile is not locked", 400);
 
-  const profile = lockClubProfile(body.profile);
+  const currentYear = currentAcademicYear();
+  const profile = lockClubProfile({ ...body.profile, academic_year: currentYear });
 
   try {
     const client = createAnthropic();
     const response = await client.messages.create({
       model: MODEL_ID,
       max_tokens: 8192,
-      system: buildSystemPrompt(profile),
+      system: buildSystemPrompt(profile, currentYear),
       messages: [
         {
           role: "user",
-          content: `잠긴 부서표를 지키면서 다음 매뉴얼에서 연간 일정과 TO-DO를 추출하라.\n\n${text}`,
+          content: `현재 학년도는 ${currentYear}년이다. 잠긴 부서표를 지키면서 다음 매뉴얼에서 연간 일정과 TO-DO를 추출하라.\n\n${text}`,
         },
       ],
     });

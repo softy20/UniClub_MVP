@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { extractManualText } from "../lib/manual-file";
 import type {
+  ClarifyingQuestion,
   ClubData,
   ClubProfile,
   OnboardingChatMessage,
-  OnboardingQuestion,
+  QuestionOption,
   RoleDefinition,
 } from "../lib/types";
 
@@ -15,7 +16,7 @@ type StartOk = {
   club_name: string;
   academic_year: number;
   draft_roles: RoleDefinition[];
-  questions: OnboardingQuestion[];
+  questions: ClarifyingQuestion[];
   assistant_message: string;
 };
 
@@ -24,7 +25,7 @@ type AnswerOk =
       ok: true;
       status: "clarifying";
       draft_roles: RoleDefinition[];
-      questions: OnboardingQuestion[];
+      questions: ClarifyingQuestion[];
       assistant_message: string;
       turn: number;
     }
@@ -45,6 +46,10 @@ type ApiError = { ok?: false; error?: string };
 
 const MAX_TURNS = 4;
 const ACCEPT = ".txt,.md,.markdown,.docx,.hwp,.hwpx";
+
+function isOtherOption(option: QuestionOption): boolean {
+  return option.is_other === true || option.id === "other" || option.label.includes("기타");
+}
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -68,9 +73,10 @@ export function ManualImportWizard() {
   const [clubName, setClubName] = useState("");
   const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
   const [draftRoles, setDraftRoles] = useState<RoleDefinition[]>([]);
-  const [questions, setQuestions] = useState<OnboardingQuestion[]>([]);
+  const [questions, setQuestions] = useState<ClarifyingQuestion[]>([]);
   const [messages, setMessages] = useState<OnboardingChatMessage[]>([]);
-  const [answer, setAnswer] = useState("");
+  const [selectedByQuestion, setSelectedByQuestion] = useState<Record<string, string>>({});
+  const [otherText, setOtherText] = useState("");
   const [turn, setTurn] = useState(1);
   const [profile, setProfile] = useState<ClubProfile | null>(null);
   const [parsed, setParsed] = useState<ClubData | null>(null);
@@ -87,7 +93,8 @@ export function ManualImportWizard() {
     setDraftRoles([]);
     setQuestions([]);
     setMessages([]);
-    setAnswer("");
+    setSelectedByQuestion({});
+    setOtherText("");
     setTurn(1);
     setProfile(null);
     setParsed(null);
@@ -122,6 +129,8 @@ export function ManualImportWizard() {
       setAcademicYear(result.academic_year);
       setDraftRoles(result.draft_roles);
       setQuestions(result.questions);
+      setSelectedByQuestion({});
+      setOtherText("");
       setMessages([{ role: "assistant", content: assistant }]);
       setTurn(1);
       setPhase("clarifying");
@@ -132,10 +141,28 @@ export function ManualImportWizard() {
     }
   }
 
-  async function sendAnswer() {
-    const content = answer.trim();
+  function composeAnswer(): string | null {
+    if (questions.length === 0) return otherText.trim() || null;
+    const parts: string[] = [];
+    for (const question of questions) {
+      const selectedId = selectedByQuestion[question.question];
+      const option = question.options.find((item) => item.id === selectedId);
+      if (!option) return null;
+      if (isOtherOption(option)) {
+        const custom = otherText.trim();
+        if (!custom) return null;
+        parts.push(`${question.question}\n선택: ${option.label}\n입력: ${custom}`);
+        continue;
+      }
+      parts.push(`${question.question}\n선택: ${option.label}`);
+    }
+    return parts.join("\n\n");
+  }
+
+  async function sendAnswer(contentOverride?: string) {
+    const content = (contentOverride ?? composeAnswer() ?? "").trim();
     if (!content) {
-      setError("답변을 입력하세요.");
+      setError("선택지를 고르거나, 기타를 고른 뒤 내용을 입력하세요.");
       return;
     }
     const nextTurn = turn + 1;
@@ -153,7 +180,8 @@ export function ManualImportWizard() {
       });
       const assistant = result.assistant_message;
       setMessages([...nextMessages, { role: "assistant", content: assistant }]);
-      setAnswer("");
+      setSelectedByQuestion({});
+      setOtherText("");
       setTurn(result.turn);
       if (result.status === "locked") {
         setProfile(result.profile);
@@ -216,13 +244,18 @@ export function ManualImportWizard() {
 
         {phase === "input" ? (
           <section className="rounded-xl border border-border bg-card p-4">
+            <div className="mb-3 rounded-lg border border-border bg-card2 p-3 text-[13px] text-fg2">
+              <p className="mb-1 font-medium text-fg">파일 업로드 가이드</p>
+              <p>지원: TXT, MD, DOCX. HWP는 미지원이므로 DOCX로 변환 후 올려 주세요.</p>
+              <p className="mt-1">부서/직책 목록, 연간 행사, 사전 준비 기간(D-n), 담당 부서가 있으면 정확도가 높아집니다.</p>
+            </div>
             <label className="mb-2 block text-sm font-medium text-fg">매뉴얼 텍스트</label>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={14}
               className="mb-3 w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
-              placeholder="TXT / MD 내용을 붙여넣거나 파일을 업로드하세요."
+              placeholder="TXT / MD 내용을 붙여넣거나 DOCX를 업로드하세요."
             />
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <label className="font-display cursor-pointer rounded-lg border border-border bg-card2 px-3 py-2 text-sm text-fg2">
@@ -277,20 +310,56 @@ export function ManualImportWizard() {
                 </div>
               ))}
             </div>
-            {questions.length > 0 ? (
-              <ul className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-fg2">
-                {questions.map((item) => (
-                  <li key={item.question}>[{item.category}] {item.question}</li>
-                ))}
-              </ul>
+            {questions.map((question) => {
+              const selectedId = selectedByQuestion[question.question];
+              return (
+                <div key={question.question} className="rounded-lg border border-border bg-card p-3">
+                  <p className="mb-2 text-[11px] tracking-widest text-fg3 uppercase">{question.category}</p>
+                  <p className="mb-3 text-sm text-fg">{question.question}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {question.options.map((option) => {
+                      const selected = selectedId === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            const next = { ...selectedByQuestion, [question.question]: option.id };
+                            setSelectedByQuestion(next);
+                            setError("");
+                            if (isOtherOption(option)) return;
+                            if (questions.length === 1) {
+                              void sendAnswer(`${question.question}\n선택: ${option.label}`);
+                            }
+                          }}
+                          className="cursor-pointer rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
+                          style={{
+                            borderColor: selected ? "var(--color-nav-line)" : "var(--border)",
+                            background: selected ? "var(--color-nav-active)" : "var(--card2)",
+                            color: selected ? "var(--accent2)" : "var(--fg)",
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {questions.some((question) => {
+              const option = question.options.find((item) => item.id === selectedByQuestion[question.question]);
+              return option ? isOtherOption(option) : false;
+            }) ? (
+              <textarea
+                value={otherText}
+                onChange={(event) => setOtherText(event.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
+                placeholder="기타 내용을 직접 입력하세요. 예: 동아리 이름은 캠퍼스밴드."
+              />
             ) : null}
-            <textarea
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
-              placeholder="짧게 답하세요. 예: 홍보와 홍보팀은 같아요. 미지정은 운영팀으로."
-            />
             <div className="flex gap-2">
               <button
                 type="button"

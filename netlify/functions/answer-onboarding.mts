@@ -3,13 +3,20 @@ import type { OnboardingChatMessage } from "../../src/lib/types.ts";
 import { createAnthropic, firstToolUse, MAX_ONBOARDING_TURNS, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
-  ANSWER_SYSTEM,
   askClarifyingTool,
+  buildAnswerSystem,
   isClarifyingPayload,
   isLockPayload,
   lockClubProfileTool,
 } from "./_shared/onboarding.ts";
-import { isOnboardingQuestion, isRecord, isRoleDefinition, lockClubProfile, normalizeRole } from "./_shared/schema.ts";
+import {
+  currentAcademicYear,
+  isRecord,
+  isRoleDefinition,
+  lockClubProfile,
+  normalizeQuestions,
+  normalizeRole,
+} from "./_shared/schema.ts";
 
 type AnswerBody = {
   text?: unknown;
@@ -39,7 +46,7 @@ export default async (req: Request) => {
 
   const text = typeof body.text === "string" ? body.text.trim() : "";
   const clubName = typeof body.club_name === "string" ? body.club_name.trim() : "동아리";
-  const academicYear = typeof body.academic_year === "number" ? body.academic_year : new Date().getFullYear();
+  const currentYear = currentAcademicYear();
   const draftRoles = Array.isArray(body.draft_roles) ? body.draft_roles.filter(isRoleDefinition) : [];
   const messages = Array.isArray(body.messages) ? body.messages.filter(isChatMessage) : [];
   const turn = typeof body.turn === "number" && body.turn > 0 ? Math.floor(body.turn) : 1;
@@ -59,10 +66,10 @@ export default async (req: Request) => {
           `매뉴얼:\n${text}`,
           `현재 부서 초안: ${JSON.stringify(draftRoles)}`,
           `추정 동아리명: ${clubName}`,
-          `추정 연도: ${academicYear}`,
+          `현재 학년도: ${currentYear} (문서의 과거 연도는 무시)`,
           forceLock
             ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라."
-            : "정보가 충분하면 잠그고, 아니면 허용 범주의 질문만 1~2개 하라.",
+            : "정보가 충분하면 잠그고, 아니면 선택지 버튼이 있는 질문만 1~2개 하라.",
         ].join("\n\n"),
       },
       ...messages.map((message) => ({
@@ -74,7 +81,7 @@ export default async (req: Request) => {
     const response = await client.messages.create({
       model: MODEL_ID,
       max_tokens: 2048,
-      system: ANSWER_SYSTEM,
+      system: buildAnswerSystem(currentYear),
       tools: [askClarifyingTool, lockClubProfileTool],
       tool_choice: forceLock
         ? { type: "tool", name: "lock_club_profile" }
@@ -93,7 +100,7 @@ export default async (req: Request) => {
       }
       const profile = lockClubProfile({
         club_name: tool.input.club_name || clubName,
-        academic_year: tool.input.academic_year || academicYear,
+        academic_year: currentYear,
         roles: tool.input.roles,
         default_role: tool.input.default_role,
         locked: true,
@@ -115,7 +122,7 @@ export default async (req: Request) => {
       ok: true,
       status: "clarifying",
       draft_roles: tool.input.draft_roles.map(normalizeRole),
-      questions: tool.input.questions.filter(isOnboardingQuestion),
+      questions: normalizeQuestions(tool.input.questions),
       assistant_message: tool.input.message.trim(),
       turn,
     });

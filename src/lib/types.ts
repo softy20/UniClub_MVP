@@ -79,12 +79,21 @@ export type ClubProfile = {
   locked: boolean;
 };
 
-export type OnboardingQuestionCategory = "roles" | "aliases" | "default_role";
+export type OnboardingQuestionCategory = "roles" | "aliases" | "club_name";
 
-export type OnboardingQuestion = {
+export type QuestionOption = {
+  id: string;
+  label: string;
+  is_other?: boolean;
+};
+
+export type ClarifyingQuestion = {
   category: OnboardingQuestionCategory;
   question: string;
+  options: QuestionOption[];
 };
+
+export type OnboardingQuestion = ClarifyingQuestion;
 
 export type OnboardingChatMessage = {
   role: "user" | "assistant";

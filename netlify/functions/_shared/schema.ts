@@ -1,14 +1,21 @@
 import type {
+  ClarifyingQuestion,
   ClubData,
   ClubEvent,
   ClubProfile,
   ClubTask,
   OnboardingQuestion,
   OnboardingQuestionCategory,
+  QuestionOption,
   RoleDefinition,
 } from "../../../src/lib/types.ts";
 
-const QUESTION_CATEGORIES: OnboardingQuestionCategory[] = ["roles", "aliases", "default_role"];
+const QUESTION_CATEGORIES: OnboardingQuestionCategory[] = ["roles", "aliases", "club_name"];
+const GENERIC_CLUB_NAMES = new Set(["", "동아리", "미상", "unknown", "클럽", "club"]);
+
+export function currentAcademicYear(): number {
+  return new Date().getFullYear();
+}
 
 type ClubTaskShape = Pick<
   ClubTask,
@@ -31,13 +38,77 @@ export function isRoleDefinition(value: unknown): value is RoleDefinition {
   );
 }
 
-export function isOnboardingQuestion(value: unknown): value is OnboardingQuestion {
+export function isQuestionOption(value: unknown): value is QuestionOption {
   if (!isRecord(value)) return false;
   return (
-    typeof value.question === "string" &&
-    typeof value.category === "string" &&
-    QUESTION_CATEGORIES.includes(value.category as OnboardingQuestionCategory)
+    typeof value.id === "string" &&
+    value.id.trim().length > 0 &&
+    typeof value.label === "string" &&
+    value.label.trim().length > 0 &&
+    (value.is_other === undefined || typeof value.is_other === "boolean")
   );
+}
+
+export function isOtherOption(option: QuestionOption): boolean {
+  return option.is_other === true || option.id === "other" || option.label.includes("기타");
+}
+
+export function ensureQuestionOptions(question: ClarifyingQuestion): ClarifyingQuestion {
+  const options = question.options.map((option) => ({
+    id: option.id.trim(),
+    label: option.label.trim(),
+    ...(isOtherOption(option) ? { is_other: true } : {}),
+  }));
+  if (options.length === 0) {
+    options.push({ id: "confirm", label: "네, 이대로 확정" }, { id: "merge", label: "부서 명칭 통합" });
+  }
+  if (!options.some(isOtherOption)) {
+    options.push({ id: "other", label: "기타(직접 입력)", is_other: true });
+  }
+  return { ...question, options };
+}
+
+export function parseClarifyingQuestion(value: unknown): ClarifyingQuestion | null {
+  if (!isRecord(value) || typeof value.question !== "string" || !value.question.trim()) {
+    return null;
+  }
+  const category = QUESTION_CATEGORIES.includes(value.category as OnboardingQuestionCategory)
+    ? (value.category as OnboardingQuestionCategory)
+    : "roles";
+  const options = Array.isArray(value.options) ? value.options.filter(isQuestionOption) : [];
+  return ensureQuestionOptions({
+    category,
+    question: value.question.trim(),
+    options,
+  });
+}
+
+export function isOnboardingQuestion(value: unknown): value is OnboardingQuestion {
+  return parseClarifyingQuestion(value) !== null;
+}
+
+export function normalizeQuestions(value: unknown): ClarifyingQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(parseClarifyingQuestion)
+    .filter((question): question is ClarifyingQuestion => question !== null)
+    .slice(0, 2);
+}
+
+export function withClubNameQuestion(clubName: string, questions: ClarifyingQuestion[]): ClarifyingQuestion[] {
+  const name = clubName.trim();
+  if (!GENERIC_CLUB_NAMES.has(name.toLowerCase()) && name.length >= 2) {
+    return questions;
+  }
+  if (questions.some((question) => question.category === "club_name")) {
+    return questions;
+  }
+  const clubQuestion = ensureQuestionOptions({
+    category: "club_name",
+    question: "매뉴얼에서 동아리 이름이 분명하지 않습니다. 공식 명칭이 무엇인가요?",
+    options: [{ id: "other", label: "기타(직접 입력)", is_other: true }],
+  });
+  return [clubQuestion, ...questions].slice(0, 2);
 }
 
 export function isClubProfile(value: unknown): value is ClubProfile {
@@ -102,17 +173,17 @@ export function normalizeRole(role: RoleDefinition): RoleDefinition {
 
 export function lockClubProfile(input: ClubProfile): ClubProfile {
   const roles = dedupeRoles(input.roles.map(normalizeRole).filter((role) => role.role_name));
-  const defaultRole = input.default_role.trim() || "미지정";
+  const defaultRole = input.default_role.trim() || "공통";
   if (!roles.some((role) => role.role_name === defaultRole)) {
     roles.push({
       role_name: defaultRole,
-      aliases: ["미배정", "담당없음", "없음"],
-      description: "담당자가 명시되지 않은 업무",
+      aliases: ["공통업무", "미지정", "미배정", "담당없음"],
+      description: "담당자가 명시되지 않은 공통 업무",
     });
   }
   return {
     club_name: input.club_name.trim() || "동아리",
-    academic_year: input.academic_year,
+    academic_year: currentAcademicYear(),
     roles,
     default_role: defaultRole,
     locked: true,
