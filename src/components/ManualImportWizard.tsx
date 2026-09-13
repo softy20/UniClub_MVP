@@ -308,7 +308,7 @@ export function ManualImportWizard() {
             <div className="mb-3 rounded-lg border border-border bg-card2 p-3 text-[13px] text-fg2">
               <p className="mb-1 font-medium text-fg">파일 업로드 가이드</p>
               <p>지원: TXT, MD, DOCX. HWP는 미지원이므로 DOCX로 변환 후 올려 주세요.</p>
-              <p className="mt-1">부서/직책 목록, 연간 행사, 사전 준비 기간(D-n), 담당 부서가 있으면 정확도가 높아집니다.</p>
+              <p className="mt-1">부서/직책이 없어도 됩니다. 없으면 공통으로 진행하고 나중에 나눌 수 있습니다.</p>
             </div>
             <div className="mb-3">
               <FileDropzone onFileSelect={(file) => void onFile(file)} />
@@ -348,6 +348,9 @@ export function ManualImportWizard() {
                   </li>
                 ))}
               </ul>
+              {draftRoles.length === 1 && draftRoles[0].role_name === "공통" ? (
+                <p className="mt-2 text-[12px] text-fg3">역할이 없어도 공통으로 일정을 만들 수 있습니다.</p>
+              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               {messages.map((message, index) => (

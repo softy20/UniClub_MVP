@@ -1,7 +1,14 @@
 import { createAnthropic, firstToolUse, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import { buildStartSystem, isDraftRolesPayload, proposeClubRolesTool } from "./_shared/onboarding.ts";
-import { currentAcademicYear, normalizeQuestions, normalizeRole, withClubNameQuestion } from "./_shared/schema.ts";
+import {
+  currentAcademicYear,
+  ensureDraftRoles,
+  normalizeQuestions,
+  normalizeRole,
+  withClubNameQuestion,
+  withEmptyRolesQuestion,
+} from "./_shared/schema.ts";
 
 type StartBody = {
   text?: unknown;
@@ -48,7 +55,11 @@ export default async (req: Request) => {
     }
 
     const clubName = tool.input.club_name.trim() || "동아리";
-    const questions = withClubNameQuestion(clubName, normalizeQuestions(tool.input.questions));
+    const draftRoles = ensureDraftRoles(tool.input.draft_roles.map(normalizeRole));
+    const questions = withEmptyRolesQuestion(
+      draftRoles,
+      withClubNameQuestion(clubName, normalizeQuestions(tool.input.questions)),
+    );
     if (questions.length === 0) {
       return errorResponse("Model did not return clarifying questions", 500);
     }
@@ -57,7 +68,7 @@ export default async (req: Request) => {
       ok: true,
       club_name: clubName,
       academic_year: currentYear,
-      draft_roles: tool.input.draft_roles.map(normalizeRole),
+      draft_roles: draftRoles,
       questions,
       assistant_message: tool.input.message.trim(),
       text,

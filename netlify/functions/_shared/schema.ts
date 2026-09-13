@@ -159,6 +159,34 @@ export function isClubData(value: unknown): value is ClubData {
   return events.every(isClubEvent);
 }
 
+export const COMMON_ROLE: RoleDefinition = {
+  role_name: "공통",
+  aliases: ["공통업무", "미지정", "미배정", "담당없음"],
+  description: "역할이 아직 나뉘지 않은 업무",
+};
+
+export function ensureDraftRoles(roles: RoleDefinition[]): RoleDefinition[] {
+  const normalized = dedupeRoles(roles.map(normalizeRole).filter((role) => role.role_name));
+  return normalized.length > 0 ? normalized : [COMMON_ROLE];
+}
+
+export function withEmptyRolesQuestion(roles: RoleDefinition[], questions: ClarifyingQuestion[]): ClarifyingQuestion[] {
+  const onlyCommon = roles.length === 1 && roles[0].role_name === COMMON_ROLE.role_name;
+  if (!onlyCommon || questions.some((question) => question.category === "roles")) {
+    return questions;
+  }
+  const rolesQuestion = ensureQuestionOptions({
+    category: "roles",
+    question: "문서에 부서/직책이 없습니다. 역할 없이 공통으로 진행할까요? 나중에 나누어도 됩니다.",
+    options: [
+      { id: "common", label: "부서 없이 진행 (공통)" },
+      { id: "add", label: "부서/직책을 추가로 알려줄게요" },
+      { id: "other", label: "기타(직접 입력)", is_other: true },
+    ],
+  });
+  return [rolesQuestion, ...questions].slice(0, 2);
+}
+
 export function normalizeRole(role: RoleDefinition): RoleDefinition {
   const roleName = role.role_name.trim();
   const aliases = role.aliases

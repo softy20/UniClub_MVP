@@ -11,6 +11,7 @@ import {
 } from "./_shared/onboarding.ts";
 import {
   currentAcademicYear,
+  ensureDraftRoles,
   isRecord,
   isRoleDefinition,
   lockClubProfile,
@@ -47,12 +48,13 @@ export default async (req: Request) => {
   const text = typeof body.text === "string" ? body.text.trim() : "";
   const clubName = typeof body.club_name === "string" ? body.club_name.trim() : "동아리";
   const currentYear = currentAcademicYear();
-  const draftRoles = Array.isArray(body.draft_roles) ? body.draft_roles.filter(isRoleDefinition) : [];
+  const draftRoles = ensureDraftRoles(
+    Array.isArray(body.draft_roles) ? body.draft_roles.filter(isRoleDefinition) : [],
+  );
   const messages = Array.isArray(body.messages) ? body.messages.filter(isChatMessage) : [];
   const turn = typeof body.turn === "number" && body.turn > 0 ? Math.floor(body.turn) : 1;
 
   if (!text) return errorResponse("Missing text", 400);
-  if (draftRoles.length === 0) return errorResponse("Missing draft_roles", 400);
   if (messages.length === 0) return errorResponse("Missing messages", 400);
 
   const forceLock = turn >= MAX_ONBOARDING_TURNS;
@@ -68,8 +70,8 @@ export default async (req: Request) => {
           `추정 동아리명: ${clubName}`,
           `현재 학년도: ${currentYear} (문서의 과거 연도는 무시)`,
           forceLock
-            ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라."
-            : "정보가 충분하면 잠그고, 아니면 선택지 버튼이 있는 질문만 1~2개 하라.",
+            ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라. roles가 비면 공통만 넣어라."
+            : "부서 없이 진행/공통/사적 모임이면 즉시 잠그고 roles는 공통만 둔다. 정보가 충분하면 잠그고, 아니면 선택지 질문만 1~2개 하라.",
         ].join("\n\n"),
       },
       ...messages.map((message) => ({
@@ -95,21 +97,26 @@ export default async (req: Request) => {
     }
 
     if (tool.name === "lock_club_profile" || forceLock) {
-      if (!isLockPayload(tool.input)) {
-        return errorResponse("Model did not return a valid ClubProfile", 500);
-      }
-      const profile = lockClubProfile({
-        club_name: tool.input.club_name || clubName,
+      const fallbackLock = {
+        club_name: clubName,
         academic_year: currentYear,
-        roles: tool.input.roles,
-        default_role: tool.input.default_role,
+        roles: draftRoles,
+        default_role: "공통",
+        message: "역할이 없어 공통으로 잠갔습니다. 나중에 부서를 나눌 수 있습니다.",
+      };
+      const raw = isLockPayload(tool.input) ? tool.input : fallbackLock;
+      const profile = lockClubProfile({
+        club_name: raw.club_name || clubName,
+        academic_year: currentYear,
+        roles: ensureDraftRoles(raw.roles.map(normalizeRole)),
+        default_role: raw.default_role || "공통",
         locked: true,
       });
       return json(200, {
         ok: true,
         status: "locked",
         profile,
-        assistant_message: tool.input.message.trim(),
+        assistant_message: raw.message.trim(),
         turn,
       });
     }
@@ -121,7 +128,7 @@ export default async (req: Request) => {
     return json(200, {
       ok: true,
       status: "clarifying",
-      draft_roles: tool.input.draft_roles.map(normalizeRole),
+      draft_roles: ensureDraftRoles(tool.input.draft_roles.map(normalizeRole)),
       questions: normalizeQuestions(tool.input.questions),
       assistant_message: tool.input.message.trim(),
       turn,

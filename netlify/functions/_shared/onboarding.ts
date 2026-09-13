@@ -37,12 +37,13 @@ academic_year는 반드시 ${currentYear}로 설정하라. 문서에 과거 연�
 - 행사 일정이나 TO-DO는 추출하지 마라.
 - 문서에 실제로 등장하거나 강하게 암시된 부서/팀/직책만 draft_roles로 제안하라.
 - 문서에 없는 직책(회장, 부회장, 총무 등)을 관례로 지어내지 마라.
+- 부서가 없거나 사적 모임/초기 동아리면 거절하지 마라. draft_roles에 "공통" 하나만 넣고 역할 없이 진행할지 물어라.
 - 비슷한 표기(홍보/홍보팀)는 별칭으로 묶고, 확정하지 못한 동일 조직 여부는 질문으로 남겨라.
 - 담당 없는 업무는 묻지 말고 이후 default_role을 "공통"으로 둔다.
 - questions는 1~2개만, 아래 범주만 허용한다:
-  - roles: 부서/직책 목록 확인
+  - roles: 부서/직책 목록 확인. 부서가 없으면 "부서 없이 진행 (공통)" 선택지를 넣는다.
   - aliases: 별칭 및 동일 조직 여부
-  - club_name: 동아리 이름 확인
+  - club_name: 모임/동아리 이름 확인. 사적 모임이어도 이름을 받아라.
 - 동아리명이 없거나 "동아리"/"미상"처럼 모호하면 첫 질문에 category "club_name"을 넣는다.
 - 각 질문은 클릭용 options를 반드시 포함한다. 예: "네, 이대로 확정", "부서 명칭 통합", "기타(직접 입력)".
 - 마지막 선택지는 반드시 id "other", label "기타(직접 입력)", is_other true 이다.
@@ -62,10 +63,11 @@ export function buildAnswerSystem(currentYear: number): string {
 - club_name: 동아리 이름 확인
 
 규칙:
-- 일정이 아니라 부서표만 다룬다.
+- 일정이 아니라 부서표만 다룬다. 사적 모임·역할 없는 초기 모임도 받아라.
 - 문서에 없는 직책을 관례로 추가하지 마라. 사용자가 명시한 것만 추가한다.
-- 담당 없는 업무는 묻지 말고 default_role을 "공통"으로 둔다. roles에 "공통"이 없으면 추가한다.
-- 정보가 충분하면 즉시 lock_club_profile을 호출한다.
+- 사용자가 부서 없이 진행/공통/사적 모임을 고르면 즉시 lock_club_profile을 호출하고 roles는 "공통"만 둔다.
+- 담당 없는 업무는 묻지 말고 default_role을 "공통"으로 둔다. roles가 비었거나 "공통"이 없으면 추가한다.
+- 정보가 충분하면 즉시 lock_club_profile을 호출한다. 빈 roles로 잠그지 말고 "공통"을 넣어라.
 - 모호할 때만 ask_clarifying_questions로 1~2개 더 묻는다.
 - 같은 범주를 반복하지 말고, 전체 대화는 최대 4턴이다.
 - 추가 질문에도 options 버튼을 넣고, 마지막은 기타(직접 입력)이다.
@@ -224,7 +226,6 @@ export function isLockPayload(value: unknown): value is LockPayload {
     typeof value.club_name === "string" &&
     typeof value.academic_year === "number" &&
     Array.isArray(value.roles) &&
-    value.roles.length > 0 &&
     value.roles.every(isRoleDefinition) &&
     typeof value.default_role === "string" &&
     typeof value.message === "string"
