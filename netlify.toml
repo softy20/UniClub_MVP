@@ -5,6 +5,12 @@
 [functions]
   directory = "netlify/functions"
 
+[functions."parse-manual-with-profile"]
+  timeout = 26
+
+[functions."parse-manual"]
+  timeout = 26
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

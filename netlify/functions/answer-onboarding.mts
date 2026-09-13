@@ -3,6 +3,12 @@ import type { OnboardingChatMessage } from "../../src/lib/types.ts";
 import { createAnthropic, firstToolUse, MAX_ONBOARDING_TURNS, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
+  buildManualUserContent,
+  hasManualContent,
+  resolveManualInput,
+  type ResolvedManual,
+} from "./_shared/manual-file.ts";
+import {
   askClarifyingTool,
   buildAnswerSystem,
   isClarifyingPayload,
@@ -21,6 +27,7 @@ import {
 
 type AnswerBody = {
   text?: unknown;
+  file?: unknown;
   club_name?: unknown;
   academic_year?: unknown;
   draft_roles?: unknown;
@@ -45,7 +52,14 @@ export default async (req: Request) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const text = typeof body.text === "string" ? body.text.trim() : "";
+  let resolved: ResolvedManual;
+  try {
+    resolved = await resolveManualInput(body.text, body.file);
+  } catch (error) {
+    return errorResponse(error instanceof Error ? error.message : String(error), 400);
+  }
+  if (!hasManualContent(resolved)) return errorResponse("Missing text", 400);
+
   const clubName = typeof body.club_name === "string" ? body.club_name.trim() : "동아리";
   const currentYear = currentAcademicYear();
   const draftRoles = ensureDraftRoles(
@@ -54,7 +68,6 @@ export default async (req: Request) => {
   const messages = Array.isArray(body.messages) ? body.messages.filter(isChatMessage) : [];
   const turn = typeof body.turn === "number" && body.turn > 0 ? Math.floor(body.turn) : 1;
 
-  if (!text) return errorResponse("Missing text", 400);
   if (messages.length === 0) return errorResponse("Missing messages", 400);
 
   const forceLock = turn >= MAX_ONBOARDING_TURNS;
@@ -64,15 +77,18 @@ export default async (req: Request) => {
     const conversation: Anthropic.MessageParam[] = [
       {
         role: "user",
-        content: [
-          `매뉴얼:\n${text}`,
-          `현재 부서 초안: ${JSON.stringify(draftRoles)}`,
-          `추정 동아리명: ${clubName}`,
-          `현재 학년도: ${currentYear} (문서의 과거 연도는 무시)`,
-          forceLock
-            ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라. roles가 비면 공통만 넣어라."
-            : "부서 없이 진행/공통/사적 모임이면 즉시 잠그고 roles는 공통만 둔다. 정보가 충분하면 잠그고, 아니면 선택지 질문만 1~2개 하라.",
-        ].join("\n\n"),
+        content: buildManualUserContent(
+          [
+            resolved.pdf ? "첨부 PDF 매뉴얼을 기준으로 부서표를 확정하라." : "아래 매뉴얼을 기준으로 부서표를 확정하라.",
+            `현재 부서 초안: ${JSON.stringify(draftRoles)}`,
+            `추정 동아리명: ${clubName}`,
+            `현재 학년도: ${currentYear} (문서의 과거 연도는 무시)`,
+            forceLock
+              ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라. roles가 비면 공통만 넣어라."
+              : "부서 없이 진행/공통/사적 모임이면 즉시 잠그고 roles는 공통만 둔다. 정보가 충분하면 잠그고, 아니면 선택지 질문만 1~2개 하라.",
+          ].join("\n\n"),
+          resolved,
+        ),
       },
       ...messages.map((message) => ({
         role: message.role,

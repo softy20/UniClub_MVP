@@ -1,5 +1,11 @@
 import { createAnthropic, firstToolUse, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
+import {
+  buildManualUserContent,
+  hasManualContent,
+  resolveManualInput,
+  type ResolvedManual,
+} from "./_shared/manual-file.ts";
 import { buildStartSystem, isDraftRolesPayload, proposeClubRolesTool } from "./_shared/onboarding.ts";
 import {
   currentAcademicYear,
@@ -12,6 +18,7 @@ import {
 
 type StartBody = {
   text?: unknown;
+  file?: unknown;
 };
 
 export default async (req: Request) => {
@@ -26,8 +33,13 @@ export default async (req: Request) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const text = typeof body.text === "string" ? body.text.trim() : "";
-  if (!text) {
+  let resolved: ResolvedManual;
+  try {
+    resolved = await resolveManualInput(body.text, body.file);
+  } catch (error) {
+    return errorResponse(error instanceof Error ? error.message : String(error), 400);
+  }
+  if (!hasManualContent(resolved)) {
     return errorResponse("Missing text", 400);
   }
 
@@ -44,7 +56,10 @@ export default async (req: Request) => {
       messages: [
         {
           role: "user",
-          content: `현재 학년도는 ${currentYear}년이다. 다음 매뉴얼에서 부서 초안과 선택지 버튼이 있는 확인 질문 1~2개를 추출하라.\n\n${text}`,
+          content: buildManualUserContent(
+            `현재 학년도는 ${currentYear}년이다. 다음 매뉴얼에서 부서 초안과 선택지 버튼이 있는 확인 질문 1~2개를 추출하라.`,
+            resolved,
+          ),
         },
       ],
     });
@@ -71,7 +86,7 @@ export default async (req: Request) => {
       draft_roles: draftRoles,
       questions,
       assistant_message: tool.input.message.trim(),
-      text,
+      text: resolved.text,
     });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : String(error), 500);
