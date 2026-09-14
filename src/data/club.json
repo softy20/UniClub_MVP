@@ -1,0 +1,708 @@
+{
+  "club_info": {
+    "club_name": "오션홀릭",
+    "academic_year": 2026,
+    "club_genre": "스포츠",
+    "advisors": [
+      {
+        "name_or_title": "A 교수님",
+        "affiliation": "레저산업전공",
+        "contact": "010-XXXX-XXXX"
+      },
+      {
+        "name_or_title": "B 교수님",
+        "affiliation": "레저산업전공",
+        "contact": "010-XXXX-XXXX"
+      },
+      {
+        "name_or_title": "C 교수님",
+        "affiliation": "방사선학과",
+        "contact": "010-XXXX-XXXX"
+      }
+    ],
+    "roles": [
+      { "role_name": "회장", "description": "대외 연락, 지도교수·샵 소통, 지원사업 통장" },
+      { "role_name": "부회장", "description": "회장 보좌 및 행사 운영" },
+      { "role_name": "총무", "description": "회비, 정산, 대절, 보험, 영수증 증빙" },
+      { "role_name": "훈련부장", "description": "수영장·해양 훈련, 커리큘럼, 멘토 배치" }
+    ],
+    "chat_room_rules": [
+      {
+        "room_type": "공지방",
+        "is_input_locked": true,
+        "purpose": "동아리 주요 공지 전용. 사담 금지, 임원 외 입력창 잠금"
+      },
+      {
+        "room_type": "수다방",
+        "is_input_locked": false,
+        "purpose": "일상 대화 및 친목"
+      },
+      {
+        "room_type": "MT & 해양훈련방",
+        "is_input_locked": false,
+        "purpose": "행사 참가자 세부 공지. 6월 MT 종료 후 8월 해양훈련방으로 재사용"
+      },
+      {
+        "room_type": "동지사방",
+        "is_input_locked": false,
+        "purpose": "대외 지원사업, 봉사, 축제 부스 운영"
+      }
+    ]
+  },
+
+  "events": [
+    {
+      "event_id": "evt_dreamdays_booth",
+      "event_name": "드림데이즈 신입생 환영 부스",
+      "category": "부스/행사",
+      "target_month": 1,
+      "tasks": [
+        {
+          "task_name": "학생지원팀 수요조사 확인 후 부스 신청",
+          "days_before_dday": 21,
+          "assigned_role": "회장",
+          "is_mandatory": true,
+          "action_details": "1월 중 수요조사 확인 후 기획·참여"
+        },
+        {
+          "task_name": "중앙동아리 부스운영 계획서 제출 및 천막·테이블·이젤 대여",
+          "days_before_dday": 14,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "checklist": ["계획서 제출", "천막/테이블/의자/이젤 무료 대여 신청"]
+        },
+        {
+          "task_name": "아쿠아라인 교육용 공기통 무료 대여 연락",
+          "days_before_dday": 7,
+          "assigned_role": "훈련부장",
+          "is_mandatory": false,
+          "action_details": "잔량 없는 교육용 공기통, 택시 이동, 영수증 증빙"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_recruitment",
+      "event_name": "신입 부원 모집",
+      "category": "신입모집",
+      "target_month": 3,
+      "target_week": "2월 말 ~ 3월 2주",
+      "tasks": [
+        {
+          "task_name": "에브리타임·인스타·교내 포스터 홍보",
+          "days_before_dday": 14,
+          "assigned_role": "임원진공통",
+          "is_mandatory": true,
+          "action_details": "에타 자유/새내기/홍보/동아리 게시판 동시 업로드. 문의는 오픈채팅·인스타 DM·공식 채널로 단일화",
+          "checklist": [
+            "학생지원팀 홍보 서류 작성 및 승인 도장",
+            "범석관 B1, 박애관-창의관, 정문 계단, 뉴밀, 인애학사 게시판만 부착",
+            "엘리베이터·미허가 벽면 금지"
+          ]
+        },
+        {
+          "task_name": "지원서 폼 개설 및 건강 확인 사전 공지",
+          "days_before_dday": 14,
+          "assigned_role": "부회장",
+          "is_mandatory": true,
+          "action_details": "한 페이지 세로 스크롤, 전공은 직접 입력, 지원동기 글자 수 완화. 이비인후과 질환자는 면접 시 의사 소견서"
+        },
+        {
+          "task_name": "면접 진행 및 합격·최종 등록",
+          "days_before_dday": 0,
+          "assigned_role": "임원진공통",
+          "is_mandatory": true,
+          "action_details": "카카오워크 등으로 소집 후 선발 완료 시 채널 폐쇄. 증명사진 파일명 성명_생년월일, 명단은 한글(.hwp)로 교수님 제출"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_ot_welcome",
+      "event_name": "신입생 환영 OT 및 개강 회식",
+      "category": "정기행사",
+      "target_month": 3,
+      "target_week": "3주",
+      "tasks": [
+        {
+          "task_name": "지도교수님 참석 여부 사전 문의",
+          "days_before_dday": 14,
+          "assigned_role": "회장",
+          "is_mandatory": true,
+          "action_details": "날짜를 통보하지 말고 A일·B일 중 가능 일정을 문의. 임원 일정 1순위, 교수님 2순위"
+        },
+        {
+          "task_name": "장소 예약 및 회식 정산",
+          "days_before_dday": 7,
+          "assigned_role": "총무",
+          "is_mandatory": true
+        }
+      ]
+    },
+    {
+      "event_id": "evt_check_dive",
+      "event_name": "기존 부원 체크 다이빙 및 멘토 교육",
+      "category": "정기활동",
+      "target_month": 3,
+      "target_week": "4주",
+      "location": "성남종합운동장 아쿠아라인",
+      "tasks": [
+        {
+          "task_name": "멘토 교육 및 체크 다이빙 진행",
+          "days_before_dday": 0,
+          "assigned_role": "훈련부장",
+          "is_mandatory": true,
+          "action_details": "교육생 3명당 멘토 1명+보조 1명, 멘토는 교육생의 50% 이하"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_theory",
+      "event_name": "이론 교육",
+      "category": "정기활동",
+      "target_month": 4,
+      "target_week": "1~2주",
+      "tasks": [
+        {
+          "task_name": "교내 강의실 대여 (조교 사전 승인)",
+          "days_before_dday": 14,
+          "assigned_role": "회장",
+          "is_mandatory": true
+        },
+        {
+          "task_name": "1·2차 이론 진행 및 이론 평가",
+          "days_before_dday": 0,
+          "assigned_role": "훈련부장",
+          "is_mandatory": true,
+          "action_details": "2주 이론 후 3주차 또는 방학 전 평가. 1차 잠수물리·생리, 2차 잠수표·장비·실기 이론"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_pool_ow",
+      "event_name": "수영장 정기 훈련 (OW/AOW)",
+      "category": "정기활동",
+      "target_month": 5,
+      "target_week": "4월 말 ~ 8월",
+      "location": "경기도 성남시 중원구 제일로 60 성남종합운동장 B동 지하 2층 아쿠아라인",
+      "tasks": [
+        {
+          "task_name": "아쿠아라인 강의실 대여 및 1회차 스킨 다이빙",
+          "days_before_dday": 7,
+          "assigned_role": "훈련부장",
+          "is_mandatory": true
+        },
+        {
+          "task_name": "훈련 분반 조사 (점심/저녁/요일, 마감 기한 명시)",
+          "days_before_dday": 7,
+          "assigned_role": "임원진공통",
+          "is_mandatory": true
+        },
+        {
+          "task_name": "교육활동일지 작성 및 훈련 전후 단체 사진",
+          "days_before_dday": 0,
+          "assigned_role": "훈련부장",
+          "is_mandatory": true,
+          "checklist": ["출석 서명", "교육 진도", "특이사항", "임원·강사 날인"]
+        }
+      ]
+    },
+    {
+      "event_id": "evt_summer_mt",
+      "event_name": "하계 빠지 MT",
+      "category": "MT/친목",
+      "target_month": 6,
+      "target_week": "4주 (종강 직후)",
+      "location": "가평/춘천 일대 수상레저 (예: 리버팰리스 수상레저)",
+      "tasks": [
+        {
+          "task_name": "펜션·수상레저 패키지 예약",
+          "days_before_dday": 30,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "action_details": "펜션+놀이기구 무제한+바베큐+가평역 왕복 픽업. 재방문·단체 할인 문의, 픽업 시간 사전 확정"
+        },
+        {
+          "task_name": "여행자 보험 일괄 가입",
+          "days_before_dday": 7,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "action_details": "참가자 인적사항 엑셀 취합 후 보험 담당자 발송"
+        },
+        {
+          "task_name": "아쿠아삭스 사이즈 취합 및 동방 재고 확인",
+          "days_before_dday": 14,
+          "assigned_role": "총무",
+          "is_mandatory": false,
+          "action_details": "V3 고급형, SS 220 ~ 3XL 280, 색상 구분 구매"
+        },
+        {
+          "task_name": "식자재 숙소 직배송 주문",
+          "days_before_dday": 7,
+          "assigned_role": "총무",
+          "is_mandatory": false,
+          "action_details": "와캠핑 등 온라인 배송, 현지 마트 대신 숙소 직배송"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_summer_marine",
+      "event_name": "하계 해양 훈련",
+      "category": "정기활동",
+      "target_month": 8,
+      "target_week": "3~4주",
+      "location": "양양 파라다이스 스킨스쿠버 (강원도 양양군 현남면)",
+      "tasks": [
+        {
+          "task_name": "다이빙 샵 1차 타진 (인원 약 20명, 희망 일정)",
+          "days_before_dday": 60,
+          "assigned_role": "회장",
+          "is_mandatory": true,
+          "action_details": "행사 1~2달 전"
+        },
+        {
+          "task_name": "예상 인원 업데이트 (2차)",
+          "days_before_dday": 21,
+          "assigned_role": "회장",
+          "is_mandatory": true
+        },
+        {
+          "task_name": "최종 참가 명단 및 상세 일정 확정 (3차)",
+          "days_before_dday": 10,
+          "assigned_role": "회장",
+          "is_mandatory": true,
+          "action_details": "행사 1~2주 전"
+        },
+        {
+          "task_name": "25인승 미니버스 대절 견적 비교 및 예약",
+          "days_before_dday": 14,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "action_details": "약 80~90만원. 성남종합운동장 07:00 집합, 07:10 출발. 하차: 파라다이스 스킨스쿠버 파란 간판 앞. 캐리어 최소화 공지",
+          "checklist": ["콜버스/올버스 비교", "80~90만원 선 확인", "아쿠아라인 내부 주차 시 카운터 정산 사전 요청"]
+        },
+        {
+          "task_name": "연안체험 운영자배상 보험 가입",
+          "days_before_dday": 7,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "action_details": "스포츠안전재단공제. 1일차/2일차 실제 입수 인원을 나눠 가입해 보험료 절감"
+        },
+        {
+          "task_name": "간식·멀미약·외상 처치 용품 사전 구매",
+          "days_before_dday": 3,
+          "assigned_role": "총무",
+          "is_mandatory": true,
+          "action_details": "대형마트/쿠팡 일괄 구매 시 현지 대비 4~5만원 절감. 지도교수님께 출발·첫날 종료·복귀 보고"
+        },
+        {
+          "task_name": "2일차 자격증 수여식 및 기념 촬영",
+          "days_before_dday": 0,
+          "assigned_role": "임원진공통",
+          "is_mandatory": false,
+          "action_details": "남애3리 해수욕장 포토존, 남애항 전망대 일출. 1인 참가비 = 다이빙비+버스+연안보험+간식 (임원은 실비만)"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_fall_opening",
+      "event_name": "2학기 개강 총회 및 회식",
+      "category": "정기행사",
+      "target_month": 9,
+      "tasks": [
+        {
+          "task_name": "총회·회식 일정 조율 및 교수님 참석 문의",
+          "days_before_dday": 14,
+          "assigned_role": "회장",
+          "is_mandatory": true
+        }
+      ]
+    },
+    {
+      "event_id": "evt_fall_leisure",
+      "event_name": "가을 레저/체험 및 선택 다이빙",
+      "category": "투어",
+      "target_month": 10,
+      "tasks": [
+        {
+          "task_name": "당일치기 친목 행사 기획 (워터파크, 실내서핑, 캠핑, 서바이벌, ATV 등)",
+          "days_before_dday": 21,
+          "assigned_role": "부회장",
+          "is_mandatory": false
+        },
+        {
+          "task_name": "가을 선택 다이빙 투어 일정 확정 (연초 선예매 권장)",
+          "days_before_dday": 60,
+          "assigned_role": "회장",
+          "is_mandatory": false
+        }
+      ]
+    },
+    {
+      "event_id": "evt_divers_night",
+      "event_name": "잠수인의 밤",
+      "category": "정기행사",
+      "target_month": 11,
+      "target_week": "11월 말 ~ 12월 초",
+      "tasks": [
+        {
+          "task_name": "교수님·선배님 참석 여부 우선 확인",
+          "days_before_dday": 21,
+          "assigned_role": "회장",
+          "is_mandatory": true
+        },
+        {
+          "task_name": "재학생 참여 유도 및 전용 테이블 운영",
+          "days_before_dday": 7,
+          "assigned_role": "임원진공통",
+          "is_mandatory": false
+        }
+      ]
+    },
+    {
+      "event_id": "evt_yearend_election",
+      "event_name": "송년회 및 차기 임원 선출",
+      "category": "정기행사",
+      "target_month": 12,
+      "tasks": [
+        {
+          "task_name": "차기 회장·부회장·총무·훈련부장단 선출 및 인수인계",
+          "days_before_dday": 0,
+          "assigned_role": "임원진공통",
+          "is_mandatory": true
+        }
+      ]
+    },
+    {
+      "event_id": "evt_ski_mt",
+      "event_name": "동계 스키장 MT",
+      "category": "MT/친목",
+      "target_month": 1,
+      "target_week": "1~2월",
+      "location": "비발디파크, 용평리조트, 휘닉스파크 등",
+      "tasks": [
+        {
+          "task_name": "11월 라이브 커머스 특가 패키지 선구매",
+          "days_before_dday": 60,
+          "assigned_role": "총무",
+          "is_mandatory": false,
+          "action_details": "대원관광 또는 리조트 무료 셔틀 활용. 숙소 인원 추가 시 불필요 침구 비용 주의"
+        }
+      ]
+    },
+    {
+      "event_id": "evt_club_reregistration",
+      "event_name": "중앙동아리 재등록 및 활동보고서",
+      "category": "정기행사",
+      "target_month": 3,
+      "tasks": [
+        {
+          "task_name": "EIS 등록 및 학생지원팀 서류 제출",
+          "days_before_dday": 0,
+          "assigned_role": "회장",
+          "is_mandatory": true,
+          "action_details": "신입 선발 전이라도 기존 부원 명단으로 우선 신청 가능"
+        },
+        {
+          "task_name": "학기 지원금 전액 소진 보고서 및 영수증 첨부",
+          "days_before_dday": 0,
+          "assigned_role": "총무",
+          "is_mandatory": true
+        }
+      ]
+    }
+  ],
+
+  "monthly_timelines": [
+    {
+      "month": 1,
+      "monthly_focus": "신입생 환영 부스, 동계 스키 MT",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "1월", "key_activities": ["학생지원팀 수요조사 확인", "드림데이즈 부스 기획"] }
+      ]
+    },
+    {
+      "month": 2,
+      "monthly_focus": "신입 모집 시작, 동계 행사 마무리",
+      "weekly_schedule": [
+        { "week_number": 4, "week_label": "2월 말", "key_activities": ["신입 모집 공고", "서류 접수 시작"] }
+      ]
+    },
+    {
+      "month": 3,
+      "monthly_focus": "신입 모집·등록, OT, 체크 다이빙",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "3월 1주", "key_activities": ["서류 접수 마감", "면접 안내"] },
+        { "week_number": 2, "week_label": "3월 2주", "key_activities": ["면접", "합격자 발표", "최종 등록"] },
+        { "week_number": 3, "week_label": "3월 3주", "key_activities": ["신입 OT", "개강 회식"] },
+        { "week_number": 4, "week_label": "3월 4주", "key_activities": ["기존 부원 체크 다이빙", "멘토 교육"] }
+      ]
+    },
+    {
+      "month": 4,
+      "monthly_focus": "이론 교육 및 장비 공동구매",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "4월 1주", "key_activities": ["1차 이론 (잠수 물리·생리)", "장비 공동구매 투표"] },
+        { "week_number": 2, "week_label": "4월 2주", "key_activities": ["2차 이론 (잠수표·장비·실기)", "슈트 사이즈 취합"] },
+        { "week_number": 3, "week_label": "4월 3주", "key_activities": ["슈트 사이즈 교수님 전달", "중간고사 대비"] },
+        { "week_number": 4, "week_label": "4월 마지막 주", "key_activities": ["1회차 스킨 다이빙 (아쿠아라인 강의실)"] }
+      ]
+    },
+    {
+      "month": 5,
+      "monthly_focus": "OW/AOW 수영장 훈련, MT 준비",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "5월 1~3주", "key_activities": ["OW 1~2회차", "AOW 1회차", "6월 MT 준비"] }
+      ]
+    },
+    {
+      "month": 6,
+      "monthly_focus": "종강 직후 빠지 MT",
+      "weekly_schedule": [
+        { "week_number": 4, "week_label": "6월 말", "key_activities": ["빠지 MT"] }
+      ]
+    },
+    {
+      "month": 7,
+      "monthly_focus": "정기 수영장 훈련 (주차별 분반)",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "7월", "key_activities": ["수영장 훈련 분반 운영"] }
+      ]
+    },
+    {
+      "month": 8,
+      "monthly_focus": "하계 해양 훈련",
+      "weekly_schedule": [
+        { "week_number": 3, "week_label": "8월 3~4주", "key_activities": ["하계 해양훈련"] }
+      ]
+    },
+    {
+      "month": 9,
+      "monthly_focus": "2학기 개강, 추석 선물, 가을 다이빙",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "9월", "key_activities": ["개강 총회 및 회식", "추석 감사 선물", "가을 선택 다이빙"] }
+      ]
+    },
+    {
+      "month": 10,
+      "monthly_focus": "가을 레저/체험",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "10월", "key_activities": ["당일치기 친목 레저"] }
+      ]
+    },
+    {
+      "month": 11,
+      "monthly_focus": "졸업·국시 응원, 잠수인의 밤, 스키 패키지 선구매",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "11월", "key_activities": ["졸업·국시 응원 선물"] },
+        { "week_number": 4, "week_label": "11월 말", "key_activities": ["잠수인의 밤", "스키 MT 특가 패키지 구매"] }
+      ]
+    },
+    {
+      "month": 12,
+      "monthly_focus": "송년회, 차기 임원 선출, 선택 해외 투어",
+      "weekly_schedule": [
+        { "week_number": 1, "week_label": "12월", "key_activities": ["송년회", "차기 임원 선출 및 인수인계"] }
+      ]
+    }
+  ],
+
+  "financial_and_admin_rules": {
+    "membership_fee": {
+      "new_member_total": 90000,
+      "existing_member": 10000,
+      "fee_notes": "신입: 입부 회비 20,000원 + OW 자격 발급 70,000원 = 90,000원 선납. 정산은 카카오톡 정산하기, 차수별 개별 금액 지정. 카카오페이 1회 한도 500만원·계좌 한도 200만원은 분할 송금. 정산 시 영수증 사진 첨부.",
+      "waiver_roles": ["임원진", "잠수인의 밤 기여자", "군휴학자"]
+    },
+    "extra_fees": [
+      { "fee_name": "Open Water (OW) 자격 발급", "amount_krw": 70000, "applies_to": "신입 기본 코스" },
+      { "fee_name": "Advanced Open Water (AOW) 자격 발급", "amount_krw": 85000, "applies_to": "AOW 과정. 기존 OW 보유자는 차액 15,000원 추가" },
+      { "fee_name": "Dive Master (DM, 레스큐 포함)", "amount_krw": 320000, "applies_to": "DM 과정 참가자" }
+    ],
+    "receipt_requirements": [
+      "신용카드 매출전표",
+      "품목·수량 표기 거래명세서 (2종 세트 보관)",
+      "온라인(쿠팡·네이버): 카드 결제 영수증 및 거래명세표 PDF",
+      "오프라인 업체: 사업자등록번호와 세부 내역이 적힌 거래명세서 (세금계산서와 구분)",
+      "지원금 지출 시 사진 및 품목 명시 영수증"
+    ]
+  },
+
+  "packing_lists": [
+    {
+      "event_type": "하계 빠지 MT",
+      "clubroom_items": ["아쿠아삭스", "명찰", "불꽃놀이 세트", "일회용 젓가락/종이컵", "물티슈", "휴지", "구급키트"],
+      "pre_order_items": ["와캠핑 등 식자재 숙소 직배송", "아쿠아삭스 V3 (동방 재고 우선 확인)"]
+    },
+    {
+      "event_type": "하계 해양 훈련",
+      "clubroom_items": [],
+      "safety_supplies": ["노보민시럽", "보나링 츄어블정", "포비돈/빨간약", "방수 밴드", "롤형 방수 테이프"],
+      "pre_order_items": ["출발 전 대형마트/쿠팡 간식 일괄 구매"]
+    },
+    {
+      "event_type": "부스 운영",
+      "clubroom_items": ["이젤", "하드보드지 퀴즈판", "바람개비 머리핀", "미니 젤리"],
+      "pre_order_items": ["아쿠아라인 교육용 공기통 무료 대여 (택시 이동)"]
+    }
+  ],
+
+  "gifts_and_anniversaries": [
+    {
+      "occasion": "추석 감사 선물",
+      "target_month": 9,
+      "recipients": ["지도교수님", "아쿠아라인 수영장 팀장님"],
+      "budget_limit_krw": 200000,
+      "budget_source": "동아리 회비",
+      "recommended_items": ["커피", "다과 세트"],
+      "precaution": "예산 총 20만원 이내"
+    },
+    {
+      "occasion": "졸업 및 국가고시 응원 선물",
+      "target_month": 11,
+      "recipients": ["졸업생", "국시 응시자"],
+      "budget_limit_krw": 20000,
+      "recommended_items": ["비타민", "보조배터리", "방한용품"],
+      "precaution": "인당 2만원 이내"
+    }
+  ],
+
+  "booth_and_promotions": [
+    {
+      "event_name": "드림데이즈 신입생 환영 부스",
+      "programs": [
+        "스쿠버 장비(BCD, 호흡기, 공기통) 착용 체험 및 폴라로이드/셀카 촬영",
+        "다이빙 수신호 퀴즈 (QR 구글폼 또는 하드보드지)",
+        "DIY 굿즈 (슈링클스 키링, 모루 꽃)"
+      ],
+      "required_supplies": ["이젤", "하드보드지", "교육용 공기통", "바람개비 머리핀", "미니 젤리", "천막", "테이블", "의자"],
+      "grant_benefit": "총학 축전 부스·재학생 참여형 행사 주최/참여 시 차기 동아리 지원금 가산점"
+    }
+  ],
+
+  "group_purchases": [
+    {
+      "item_name": "마스크 및 스노클 세트",
+      "target_month": 4,
+      "purchase_criteria": [
+        "마스크: 1안식, 불투명 실리콘 스커트 필수",
+        "스노클: 드라이탑 없는 프리다이빙/스쿠버 겸용 튜브",
+        "퍼지 밸브 불편 피드백 → 마스크 단품 또는 검증된 스노클 분리 구매 고려"
+      ],
+      "caution_notes": "투명 실리콘은 빛 반사 및 황변. 드라이탑 밸브 오작동 시 호흡 곤란 및 물빼기 훈련 방해"
+    },
+    {
+      "item_name": "개인 슈트 (워터프루프 3mm/5mm)",
+      "target_month": 4,
+      "purchase_criteria": ["4월 2주 사이즈 취합", "4월 3주 교수님 전달"],
+      "caution_notes": "후드 대신 다이빙 드라이백 세트 구성 가능 여부를 업체/교수님께 사전 협의"
+    }
+  ],
+
+  "activity_programs": [
+    {
+      "program_name": "이론 교육",
+      "program_type": "자격교육",
+      "sessions": [
+        {
+          "session_number": 1,
+          "session_theme": "잠수 물리 및 잠수 생리",
+          "contents": ["보일/샤를/헨리의 법칙", "압착, 역압착, 질소마취, 감압병"]
+        },
+        {
+          "session_number": 2,
+          "session_theme": "잠수표·장비·실기 이론",
+          "contents": ["RDP 보는 법", "잠수 장비 구조", "스쿠버/스킨 다이빙 실기 이론"]
+        }
+      ]
+    },
+    {
+      "program_name": "오픈워터(OW) 수영장 훈련",
+      "program_type": "자격교육",
+      "sessions": [
+        {
+          "session_number": 1,
+          "session_theme": "장비 적응 및 스킨 다이빙",
+          "contents": ["장비/웨이트 체결·해체 5회", "스트레칭", "스킨다이빙·스노클 호흡·물빼기", "핀킥(플러터킥)", "얕은 수역 입수", "5분 호흡 적응", "마스크 부분 물빼기(1/3)", "호흡기 찾기", "단계별 이퀄라이징 하강"],
+          "safety_notes": "프리다이버 숨참기 구역·수평줄·수직 부이 접근 금지. BCD로 급상승 금지"
+        },
+        {
+          "session_number": 2,
+          "session_theme": "스쿠버 입문 및 기초 스킬",
+          "contents": ["덕다이빙", "수신호 점검", "마스크 전면 물빼기", "호흡기 찾기 복습", "웨이트 벨트 탈부착", "BCD 탈부착", "핀 피봇 기초 중성부력"]
+        },
+        {
+          "session_number": 3,
+          "session_theme": "기술 숙달 및 반복",
+          "contents": ["자이언트 스트라이드/스텝 인 입수", "수중 웨이트/BCD 탈부착", "핀 피봇 중성부력 유영", "짝호흡", "지친 다이버 끌기"]
+        },
+        {
+          "session_number": 4,
+          "session_theme": "숙련도 완성 및 비상 대응",
+          "contents": ["오랄 BCD 주입 중성부력", "호버링", "안전 정지 5m 3분", "CESA", "프리플로우 호흡기 대처"]
+        },
+        {
+          "session_number": 5,
+          "session_theme": "체크 다이빙 및 해양 시뮬레이션",
+          "contents": ["버디 시스템 전 과정", "수신호 기반 모의 해양실습", "비상 대처 평가"]
+        }
+      ]
+    },
+    {
+      "program_name": "어드밴스드(AOW) 심화 훈련",
+      "program_type": "자격교육",
+      "sessions": [
+        {
+          "session_number": 1,
+          "session_theme": "SMB 슈팅",
+          "contents": ["바닥 거치 후 쏘기", "중성부력 호버링 상태에서 쏘기"]
+        },
+        {
+          "session_number": 2,
+          "session_theme": "수중 나침반 항법",
+          "contents": ["육상 좌표 설정", "수중 왕복/사각 패턴 네비게이션"]
+        },
+        {
+          "session_number": 3,
+          "session_theme": "자세 및 추진력",
+          "contents": ["프로그킥·백킥", "수평 트림 (±1cm 호버링)", "거북이 경주(최저속 글라이딩)", "기습 공기 차단/수신호 비상 대응"]
+        }
+      ]
+    }
+  ],
+
+  "vertical_extensions": {
+    "advisor_protocol": {
+      "scheduling": "날짜 통보 금지. A일·B일 중 가능 여부 문의. 임원 일정 1순위, 교수님 2순위",
+      "must_report": ["교내 부스", "수영장 정기 훈련", "해양 훈련 출발/첫날 종료/복귀", "주요 행사 결과"]
+    },
+    "dive_facility": {
+      "name": "아쿠아라인 잠수풀",
+      "address": "경기도 성남시 중원구 제일로 60 성남종합운동장 B동 지하 2층",
+      "entry_steps": [
+        "카운터 사용신청서 작성 후 카드키 교환 (신발장 보관)",
+        "샤워·환복 후 50m 일반풀이 아닌 다목적 5m 잠수풀 입장",
+        "사용 전 공기통은 손잡이로 들어 이동 (바닥 끌기 금지)",
+        "렌탈실에서 BCD·호흡기·웨이트 반출",
+        "종료 후 세척·반납, 사용 후 공간에 공기통 정돈"
+      ],
+      "pool_safety": [
+        "프리다이버 스태틱·다이나믹 줄·CWTB 부이 접근 금지",
+        "BCD 급상승 금지, 장애물 확인 후 핀킥으로 상승",
+        "SMB는 레인 안쪽·프리다이버 경로를 피해 개방 수역에서 전개"
+      ]
+    },
+    "training_ops": {
+      "max_new_trainees": 12,
+      "mentor_ratio": "교육생 3명당 멘토 1 + 보조 1, 멘토 최대는 교육생의 50% 이하",
+      "lead_officer": "장비 세팅 구역에서 인원 통제 및 브리핑"
+    },
+    "certification_tracks": ["OW", "AOW", "Rescue Diver", "DM", "OWI", "MI", "CD/IT"],
+    "year_start_booking": "여름 해양(필수), 가을·연말 다이빙(선택)을 연초에 확정하고 항공·숙소 선예매 권장",
+    "overseas_tour_notes": "위탁수하물 20kg 무료 항공사(아시아나, 티웨이) 우선. 현지 샵 숙소 연계 할인 및 보트/섬 다이빙 사전 예약",
+    "seongnam_youth_grant": {
+      "amount_krw": 1000000,
+      "account": "회장 명의 전용 통장/체크카드",
+      "conditions": "만 24세 이하 대학생 15명 이내",
+      "budget_caps": "프로그램비·운영비·식비·강사비, 분야당 최대 50%(50만원)"
+    }
+  }
+}

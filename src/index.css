@@ -1,0 +1,126 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-display: "Outfit", "Pretendard Variable", sans-serif;
+  --color-bg: #f7f7f9;
+  --color-bg2: #ffffff;
+  --color-card: #ffffff;
+  --color-card2: #f2f2f5;
+  --color-border: #e4e4ea;
+  --color-border2: #d0d0d8;
+  --color-fg: #111118;
+  --color-fg2: #4a4a5a;
+  --color-fg3: #9090a0;
+  --color-accent: #0066ff;
+  --color-accent2: #0052cc;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warn: #eab308;
+  --color-sidebar: #f0f0f5;
+  --color-nav-active: rgba(99, 102, 241, 0.15);
+  --color-nav-line: rgba(99, 102, 241, 0.3);
+  --radius-chip: 8px;
+  --radius-card-lg: 16px;
+  --radius-wizard: 20px;
+}
+
+:root {
+  --bg: #f7f7f9;
+  --bg2: #ffffff;
+  --card: #ffffff;
+  --card2: #f2f2f5;
+  --border: #e4e4ea;
+  --border2: #d0d0d8;
+  --fg: #111118;
+  --fg2: #4a4a5a;
+  --fg3: #9090a0;
+  --accent: #0066ff;
+  --accent2: #0052cc;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warn: #eab308;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d0d8 transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: #111118;
+  color: #f7f7f8;
+}
+
+:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.slide-in {
+  animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.fade-in {
+  animation: fade-in 0.2s ease both;
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
