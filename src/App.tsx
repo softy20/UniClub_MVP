@@ -59,13 +59,6 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => go("manual")}
-              className="h-[29px] cursor-pointer rounded-md border border-border bg-card px-2.5 text-[12px] font-semibold text-fg3"
-            >
-              M2 온보딩
-            </button>
             <div className="flex h-[29px] items-center gap-1.5 rounded-md bg-card px-2.5">
               <span className="pulse-dot size-[7px] shrink-0 rounded-full bg-green-500" />
               <span className="tabular text-[13px] font-semibold text-fg3">
