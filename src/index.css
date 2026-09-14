@@ -15,9 +15,15 @@
   --color-fg3: #9090a0;
   --color-accent: #0066ff;
   --color-accent2: #0052cc;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-warn: #eab308;
   --color-sidebar: #f0f0f5;
   --color-nav-active: rgba(99, 102, 241, 0.15);
   --color-nav-line: rgba(99, 102, 241, 0.3);
+  --radius-chip: 8px;
+  --radius-card-lg: 16px;
+  --radius-wizard: 20px;
 }
 
 :root {
@@ -32,6 +38,9 @@
   --fg3: #9090a0;
   --accent: #0066ff;
   --accent2: #0052cc;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warn: #eab308;
 }
 
 html,

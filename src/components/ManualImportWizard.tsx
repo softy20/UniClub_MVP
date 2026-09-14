@@ -1,10 +1,11 @@
+import { Lightbulb } from "@phosphor-icons/react";
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import clubSample from "../data/club.json";
 import {
   classifyManualFile,
   filePayloadForApi,
   HWP_MESSAGE,
   MANUAL_ACCEPT,
-  MANUAL_SIZE_GUIDE,
   MANUAL_UPLOAD_GUIDE,
   readManualFile,
   type ManualFilePayload,
@@ -15,9 +16,12 @@ import type {
   ClubEvent,
   ClubProfile,
   OnboardingChatMessage,
+  OnboardingQuestionCategory,
   QuestionOption,
   RoleDefinition,
 } from "../lib/types";
+import { ManualPreview } from "./ManualPreview";
+import { RoleChip } from "./marks";
 
 type Phase = "input" | "clarifying" | "locked" | "parsed";
 
@@ -58,6 +62,11 @@ type ApiError = { ok?: false; error?: string };
 type ParseHalf = "first" | "second";
 
 const MAX_TURNS = 4;
+const CATEGORY_LABEL: Record<OnboardingQuestionCategory, string> = {
+  roles: "부서 확인",
+  aliases: "별칭 확인",
+  club_name: "동아리명 확인",
+};
 const PARSE_TIMEOUT_MESSAGE = "일정 파싱이 시간 제한을 넘었습니다. 문서를 나누거나 다시 시도해 주세요.";
 const PARSE_HALVES: Record<ParseHalf, { label: string; chunks: number[][] }> = {
   first: {
@@ -158,10 +167,10 @@ function FileDropzone({ onFileSelect }: { onFileSelect: (file: File) => void }) 
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="cursor-pointer rounded-lg border-2 border-dashed p-8 text-center"
+      className="cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all"
       style={{
         borderColor: isDragging ? "var(--accent)" : "var(--border2)",
-        background: isDragging ? "var(--color-nav-active)" : "var(--card2)",
+        background: isDragging ? "rgba(0,102,255,0.04)" : "var(--card)",
       }}
     >
       <input
@@ -171,16 +180,51 @@ function FileDropzone({ onFileSelect }: { onFileSelect: (file: File) => void }) 
         className="hidden"
         onChange={handleFileChange}
       />
+      <p className="font-display mb-2 text-lg font-semibold text-fg">운영 매뉴얼 업로드</p>
       <p className="text-sm font-medium text-fg2">
         파일을 드래그하여 올리거나 <span className="text-accent underline">여기 클릭</span>하여 탐색기 열기
       </p>
-      <p className="mt-2 text-[12px] text-fg3">DOCX, PDF, TXT, MD 지원</p>
+      <div className="mt-4 flex justify-center gap-2">
+        {[".md", ".docx", ".pdf", ".txt"].map((ext) => (
+          <span
+            key={ext}
+            className="rounded-md border border-border bg-card2 px-2 py-1 text-[13px] font-semibold text-fg3"
+          >
+            {ext}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
 function isOtherOption(option: QuestionOption): boolean {
   return option.is_other === true || option.id === "other" || option.label.includes("기타");
+}
+
+function composeAnswerFrom(
+  questions: ClarifyingQuestion[],
+  selectedByQuestion: Record<string, string>,
+  otherByQuestion: Record<string, string>,
+): string | null {
+  if (questions.length === 0) {
+    const only = Object.values(otherByQuestion).map((value) => value.trim()).find(Boolean);
+    return only || null;
+  }
+  const parts: string[] = [];
+  for (const question of questions) {
+    const selectedId = selectedByQuestion[question.question];
+    const option = question.options.find((item) => item.id === selectedId);
+    if (!option) return null;
+    if (isOtherOption(option)) {
+      const custom = (otherByQuestion[question.question] ?? "").trim();
+      if (!custom) return null;
+      parts.push(`${question.question}\n선택: ${option.label}\n입력: ${custom}`);
+      continue;
+    }
+    parts.push(`${question.question}\n선택: ${option.label}`);
+  }
+  return parts.join("\n\n");
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -224,6 +268,7 @@ export function ManualImportWizard() {
   const [messages, setMessages] = useState<OnboardingChatMessage[]>([]);
   const [selectedByQuestion, setSelectedByQuestion] = useState<Record<string, string>>({});
   const [otherByQuestion, setOtherByQuestion] = useState<Record<string, string>>({});
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [turn, setTurn] = useState(1);
   const [profile, setProfile] = useState<ClubProfile | null>(null);
   const [parsed, setParsed] = useState<ClubData | null>(null);
@@ -247,6 +292,7 @@ export function ManualImportWizard() {
     setMessages([]);
     setSelectedByQuestion({});
     setOtherByQuestion({});
+    setQuestionIndex(0);
     setTurn(1);
     setProfile(null);
     setParsed(null);
@@ -305,6 +351,7 @@ export function ManualImportWizard() {
       setQuestions(result.questions);
       setSelectedByQuestion({});
       setOtherByQuestion({});
+      setQuestionIndex(0);
       setMessages([{ role: "assistant", content: assistant }]);
       setTurn(1);
       setPhase("clarifying");
@@ -316,24 +363,13 @@ export function ManualImportWizard() {
   }
 
   function composeAnswer(): string | null {
-    if (questions.length === 0) {
-      const only = Object.values(otherByQuestion).map((value) => value.trim()).find(Boolean);
-      return only || null;
-    }
-    const parts: string[] = [];
-    for (const question of questions) {
-      const selectedId = selectedByQuestion[question.question];
-      const option = question.options.find((item) => item.id === selectedId);
-      if (!option) return null;
-      if (isOtherOption(option)) {
-        const custom = (otherByQuestion[question.question] ?? "").trim();
-        if (!custom) return null;
-        parts.push(`${question.question}\n선택: ${option.label}\n입력: ${custom}`);
-        continue;
-      }
-      parts.push(`${question.question}\n선택: ${option.label}`);
-    }
-    return parts.join("\n\n");
+    return composeAnswerFrom(questions, selectedByQuestion, otherByQuestion);
+  }
+
+  function openSamplePreview() {
+    setError("");
+    setParsed(clubSample as ClubData);
+    setPhase("parsed");
   }
 
   async function sendAnswer(contentOverride?: string) {
@@ -360,6 +396,7 @@ export function ManualImportWizard() {
       setMessages([...nextMessages, { role: "assistant", content: assistant }]);
       setSelectedByQuestion({});
       setOtherByQuestion({});
+      setQuestionIndex(0);
       setTurn(result.turn);
       if (result.status === "locked") {
         setProfile(result.profile);
@@ -451,190 +488,320 @@ export function ManualImportWizard() {
     }
   }
 
+  const questionCount = Math.max(questions.length, 1);
+  const safeQuestionIndex = Math.min(questionIndex, questionCount - 1);
+  const currentQuestion = questions[safeQuestionIndex];
+  const selectedId = currentQuestion ? selectedByQuestion[currentQuestion.question] : undefined;
+  const selectedOption = currentQuestion?.options.find((item) => item.id === selectedId);
+  const showOther = selectedOption ? isOtherOption(selectedOption) : false;
+  const roleRoster = (profile?.roles ?? draftRoles).map((role) => role.role_name);
+
+  function chooseOption(question: ClarifyingQuestion, option: QuestionOption) {
+    const next = { ...selectedByQuestion, [question.question]: option.id };
+    setSelectedByQuestion(next);
+    setError("");
+    if (isOtherOption(option)) return;
+    const isLast = questions.length <= 1 || safeQuestionIndex >= questions.length - 1;
+    if (!isLast) {
+      window.setTimeout(() => setQuestionIndex((index) => Math.min(index + 1, questions.length - 1)), 320);
+      return;
+    }
+    const content = composeAnswerFrom(questions, next, otherByQuestion);
+    if (content) void sendAnswer(content);
+  }
+
+  if (phase === "parsed" && parsed) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <ManualPreview
+          data={parsed}
+          onChange={setParsed}
+          onBack={profile ? () => setPhase("locked") : undefined}
+          onReset={reset}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in h-full overflow-y-auto p-6">
-      <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
-        <ol className="flex flex-wrap gap-2 text-[12px] text-fg3">
-          {(["input", "clarifying", "locked", "parsed"] as Phase[]).map((step) => (
-            <li
-              key={step}
-              className="rounded-md border px-2 py-1"
-              style={{
-                borderColor: phase === step ? "var(--color-nav-line)" : "var(--border)",
-                color: phase === step ? "var(--accent2)" : "var(--fg3)",
-                background: phase === step ? "var(--color-nav-active)" : "var(--card)",
-              }}
-            >
-              {step}
-            </li>
-          ))}
-        </ol>
-
-        {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4">
+        {phase === "input" ? (
+          <>
+            <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
+            {error ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            ) : null}
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <div
+                className="mb-3 rounded-2xl border px-4 py-3.5"
+                style={{
+                  background: "rgba(0,102,255,0.06)",
+                  borderColor: "rgba(0,102,255,0.18)",
+                }}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <Lightbulb size={18} weight="fill" color="#F5C518" aria-hidden="true" />
+                  <p className="text-[13px] font-semibold text-accent">파일 업로드 가이드</p>
+                </div>
+                <div style={{ paddingLeft: "25px" }}>
+                  <p className="text-[13px] leading-relaxed text-fg2">
+                    {MANUAL_UPLOAD_GUIDE} 부서·직책이 없으면 공통으로 진행할 수 있습니다.
+                  </p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-fg2">
+                    파일은 <span className="font-semibold text-fg">4MB 이하</span>만 올려 주세요. 사진이 들어 있으면 용량이
+                    커지니, 글자만 남기면 매뉴얼이 훨씬 가벼워집니다.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {["DOCX", "PDF", "TXT", "MD"].map((ext) => (
+                      <span
+                        key={ext}
+                        className="rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide text-accent2"
+                        style={{ background: "rgba(255,255,255,0.8)" }}
+                      >
+                        {ext}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  
+                </div>
+                
+              </div>
+              <div className="mb-3">
+                <FileDropzone onFileSelect={(file) => void onFile(file)} />
+                {fileName ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-card2 px-3 py-2">
+                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-[rgba(34,197,94,0.15)] text-[11px] font-bold text-[#16a34a]">
+                      ✓
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-fg">{fileName}</p>
+                      <p className="text-[12px] text-fg3">
+                        {filePayload
+                          ? "파일이 첨부되었습니다. 미리보기는 건너뛰고 추출 시 서버에서 읽습니다."
+                          : "텍스트가 입력칸에 채워졌습니다."}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              {fileError ? (
+                <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {fileError === HWP_MESSAGE ? HWP_MESSAGE : fileError}
+                </p>
+              ) : null}
+              <label className="mb-2 block text-sm font-medium text-fg">매뉴얼 텍스트</label>
+              <textarea
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                rows={10}
+                className="mb-3 w-full rounded-xl border border-border bg-card2 p-3 text-sm text-fg"
+                placeholder="TXT / MD 내용을 붙여넣거나 위에서 파일을 올리세요."
+              />
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void startOnboarding()}
+                className="font-display w-full cursor-pointer rounded-[10px] bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {loading ? "부서 초안 추출 중..." : "부서 초안 추출"}
+              </button>
+              <button
+                type="button"
+                onClick={openSamplePreview}
+                className="mt-2 w-full cursor-pointer rounded-[10px] border border-border bg-card py-2.5 text-sm font-semibold text-fg2"
+              >
+                샘플 데이터로 미리보기 에디터 열기
+              </button>
+            </section>
+          </>
         ) : null}
 
-        {phase === "input" ? (
-          <section className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 rounded-lg border border-border bg-card2 p-3 text-[13px] text-fg2">
-              <p className="mb-1 font-medium text-fg">파일 업로드 가이드</p>
-              <p>{MANUAL_UPLOAD_GUIDE}</p>
-              <p className="mt-1">{MANUAL_SIZE_GUIDE}</p>
-              <p className="mt-1">지원: DOCX, PDF, TXT, MD. 부서/직책이 없으면 공통으로 진행할 수 있습니다.</p>
-            </div>
-            <div className="mb-3">
-              <FileDropzone onFileSelect={(file) => void onFile(file)} />
-              {fileName ? <p className="mt-2 text-[12px] text-fg3">선택됨: {fileName}</p> : null}
-            </div>
-            {fileError ? (
-              <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {fileError === HWP_MESSAGE ? HWP_MESSAGE : fileError}
-              </p>
+        {phase === "clarifying" ? (
+          <section className="flex min-h-[calc(100%-1rem)] flex-col justify-center py-8">
+            {error ? (
+              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
             ) : null}
-            <label className="mb-2 block text-sm font-medium text-fg">매뉴얼 텍스트</label>
-            <textarea
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              rows={14}
-              className="mb-3 w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
-              placeholder="TXT / MD 내용을 붙여넣거나 위에서 파일을 올리세요."
-            />
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => void startOnboarding()}
-              className="font-display w-full cursor-pointer rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {loading ? "부서 초안 추출 중..." : "부서 초안 추출"}
+            <div className="mb-10">
+              <div className="mb-2.5 flex items-center justify-between">
+                <span className="text-xs font-semibold tracking-[0.08em] text-fg3 uppercase">
+                  {safeQuestionIndex + 1} / {questionCount} 단계 확인 중 · 턴 {turn}/{MAX_TURNS}
+                </span>
+                <span className="text-xs text-fg3">{Math.round(((safeQuestionIndex + 1) / questionCount) * 100)}% 완료</span>
+              </div>
+              <div className="flex gap-1.5">
+                {Array.from({ length: questionCount }, (_, index) => (
+                  <div
+                    key={index}
+                    className="h-1 flex-1 rounded-full transition-colors duration-300"
+                    style={{ background: index <= safeQuestionIndex ? "var(--accent)" : "var(--border)" }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div key={currentQuestion?.question ?? "freeform"} className="fade-in rounded-[20px] border border-border bg-card px-10 pt-10 pb-9">
+              <p className="mb-3 text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
+                {currentQuestion ? CATEGORY_LABEL[currentQuestion.category] : "추가 확인"} · 확인 {safeQuestionIndex + 1}단계
+              </p>
+              <h2 className="font-display mb-2 text-[22px] leading-snug font-bold text-fg">
+                {currentQuestion?.question ?? "추가로 알려주실 내용이 있나요?"}
+              </h2>
+              <p className="mb-7 text-sm leading-relaxed text-fg3">
+                {currentQuestion
+                  ? "매뉴얼에서 추출한 내용입니다. 선택지를 고르면 다음 질문으로 이동합니다."
+                  : "선택지가 없으면 내용을 입력한 뒤 확인을 눌러 주세요."}
+              </p>
+
+              {currentQuestion ? (
+                <div className="flex flex-col gap-2.5">
+                  {currentQuestion.options.map((option) => {
+                    const selected = selectedId === option.id;
+                    const customOpen = showOther && isOtherOption(option);
+                    return (
+                      <div key={option.id}>
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => chooseOption(currentQuestion, option)}
+                          className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-[18px] py-3.5 text-left text-sm font-medium text-fg disabled:opacity-60"
+                          style={{
+                            border: `1.5px solid ${selected || customOpen ? "var(--accent)" : "var(--border)"}`,
+                            background: selected
+                              ? "rgba(0,102,255,0.06)"
+                              : customOpen
+                                ? "rgba(0,102,255,0.04)"
+                                : "var(--bg)",
+                          }}
+                        >
+                          <span
+                            className="flex size-[18px] shrink-0 items-center justify-center rounded-full"
+                            style={{
+                              border: `2px solid ${selected || customOpen ? "var(--accent)" : "var(--border)"}`,
+                              background: selected ? "var(--accent)" : "transparent",
+                            }}
+                          >
+                            {selected ? <span className="size-[7px] rounded-full bg-white" /> : null}
+                          </span>
+                          {isOtherOption(option) ? <span className="text-fg3">{option.label}</span> : option.label}
+                        </button>
+                        {customOpen ? (
+                          <div className="fade-in mt-2 flex gap-2">
+                            <textarea
+                              autoFocus
+                              value={otherByQuestion[currentQuestion.question] ?? ""}
+                              onChange={(event) => {
+                                setOtherByQuestion((prev) => ({
+                                  ...prev,
+                                  [currentQuestion.question]: event.target.value,
+                                }));
+                              }}
+                              rows={3}
+                              className="w-full rounded-[10px] border-[1.5px] border-accent bg-bg p-3 text-sm text-fg outline-none"
+                              placeholder="직접 입력해 주세요..."
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <textarea
+                  value={otherByQuestion.freeform ?? ""}
+                  onChange={(event) => setOtherByQuestion({ freeform: event.target.value })}
+                  rows={4}
+                  className="w-full rounded-[10px] border-[1.5px] border-border bg-bg p-3 text-sm text-fg"
+                  placeholder="추가로 확정할 내용을 입력하세요."
+                />
+              )}
+
+              <div className="mt-6 flex items-center gap-3">
+                {safeQuestionIndex > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))}
+                    className="cursor-pointer border-0 bg-transparent p-0 text-[13px] text-fg3"
+                  >
+                    ← 이전 단계로
+                  </button>
+                ) : null}
+                <div className="flex-1" />
+                {(showOther || !currentQuestion) && !loading ? (
+                  <button
+                    type="button"
+                    onClick={() => void sendAnswer()}
+                    className="font-display cursor-pointer rounded-[10px] bg-accent px-[18px] py-2.5 text-[13px] font-semibold text-white"
+                  >
+                    확인
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <button type="button" onClick={reset} className="mt-4 self-start text-[13px] text-fg3">
+              처음부터
             </button>
           </section>
         ) : null}
 
-        {phase === "clarifying" ? (
-          <section className="flex flex-col gap-3">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="mb-2 text-xs text-fg3">
-                부서 초안 · {turn}/{MAX_TURNS}턴
+        {phase === "locked" && profile ? (
+          <section className="flex flex-col py-8">
+            {error ? (
+              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            ) : null}
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[14px] bg-[rgba(0,102,255,0.1)] text-[22px]">
+                🔒
+              </div>
+              <h2 className="font-display mb-2 text-[26px] font-extrabold text-fg">부서/팀 구성을 확인해 주세요</h2>
+              <p className="text-sm text-fg3">
+                {profile.club_name} · {profile.academic_year}년. 아래 역할 목록 안에서만 일정을 파싱합니다.
               </p>
-              <ul className="flex flex-col gap-1 text-sm text-fg">
-                {draftRoles.map((role) => (
-                  <li key={role.role_name}>
-                    {role.role_name}
-                    {role.aliases.length > 0 ? ` (${role.aliases.join(", ")})` : ""}
-                  </li>
+            </div>
+            <div className="mb-5 rounded-[20px] border border-border bg-card p-8">
+              <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">현재 팀 목록</p>
+              <div className="flex flex-wrap gap-2.5">
+                {profile.roles.map((role) => (
+                  <RoleChip key={role.role_name} name={role.role_name} roster={roleRoster} />
                 ))}
-              </ul>
-              {draftRoles.length === 1 && draftRoles[0].role_name === "공통" ? (
-                <p className="mt-2 text-[12px] text-fg3">역할이 없어도 공통으로 일정을 만들 수 있습니다.</p>
+              </div>
+              {profile.roles.length === 1 && profile.roles[0].role_name === "공통" ? (
+                <p className="mt-4 text-[12px] text-fg3">역할이 없어도 공통으로 일정을 만들 수 있습니다.</p>
               ) : null}
             </div>
-            <div className="flex flex-col gap-2">
-              {messages.map((message, index) => (
-                <div
-                  key={`${message.role}-${index}`}
-                  className="rounded-lg border border-border bg-card p-3 text-sm whitespace-pre-wrap"
-                  style={{ background: message.role === "assistant" ? "var(--card2)" : "var(--card)" }}
-                >
-                  <p className="mb-1 text-[11px] tracking-widest text-fg3 uppercase">
-                    {message.role === "assistant" ? "AI" : "사용자"}
-                  </p>
-                  {message.content}
-                </div>
-              ))}
-            </div>
-            {questions.map((question) => {
-              const selectedId = selectedByQuestion[question.question];
-              const selectedOption = question.options.find((item) => item.id === selectedId);
-              const showOther = selectedOption ? isOtherOption(selectedOption) : false;
-              return (
-                <div key={question.question} className="rounded-lg border border-border bg-card p-3">
-                  <p className="mb-2 text-[11px] tracking-widest text-fg3 uppercase">{question.category}</p>
-                  <p className="mb-3 text-sm text-fg">{question.question}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {question.options.map((option) => {
-                      const selected = selectedId === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          disabled={loading}
-                          onClick={() => {
-                            const next = { ...selectedByQuestion, [question.question]: option.id };
-                            setSelectedByQuestion(next);
-                            setError("");
-                            if (isOtherOption(option)) return;
-                            if (questions.length === 1) {
-                              void sendAnswer(`${question.question}\n선택: ${option.label}`);
-                            }
-                          }}
-                          className="cursor-pointer rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
-                          style={{
-                            borderColor: selected ? "var(--color-nav-line)" : "var(--border)",
-                            background: selected ? "var(--color-nav-active)" : "var(--card2)",
-                            color: selected ? "var(--accent2)" : "var(--fg)",
-                          }}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {showOther ? (
-                    <textarea
-                      value={otherByQuestion[question.question] ?? ""}
-                      onChange={(event) => {
-                        setOtherByQuestion((prev) => ({ ...prev, [question.question]: event.target.value }));
-                      }}
-                      rows={3}
-                      className="mt-3 w-full rounded-lg border border-border bg-card2 p-3 text-sm text-fg"
-                      placeholder="이 질문에 대한 기타 내용을 입력하세요."
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void sendAnswer()}
-                className="font-display flex-1 cursor-pointer rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {loading ? "확인 중..." : "답변 보내기"}
-              </button>
-              <button type="button" onClick={reset} className="rounded-lg border border-border px-4 text-sm text-fg3">
-                처음부터
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {phase === "locked" && profile ? (
-          <section className="flex flex-col gap-3">
-            <p className="text-sm text-fg2">부서표가 잠겼습니다. 이 역할 목록 안에서만 일정을 파싱합니다.</p>
-            <pre className="overflow-x-auto rounded-xl border border-border bg-[#111118] p-4 text-xs text-cyan-200">
-              {JSON.stringify(profile, null, 2)}
-            </pre>
             {firstEvents || secondEvents || failedHalves.length > 0 ? (
-              <p className="text-[12px] text-fg3">
+              <p className="mb-3 text-[12px] text-fg3">
                 상반기 {firstEvents ? `완료 (${firstEvents.length}건)` : failedHalves.includes("first") ? "실패" : "대기"} · 하반기{" "}
                 {secondEvents ? `완료 (${secondEvents.length}건)` : failedHalves.includes("second") ? "실패" : "대기"}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
+            {loading && parseStep ? (
+              <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-border2">
+                <div className="h-full w-2/3 animate-pulse rounded-full bg-accent" />
+              </div>
+            ) : null}
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={reset}
+                className="cursor-pointer rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-fg3"
+              >
+                처음부터
+              </button>
               {failedHalves.length === 0 ? (
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => void parseWithProfile()}
-                  className="font-display flex-1 cursor-pointer rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                  className="font-display flex-1 cursor-pointer rounded-xl bg-accent py-3 text-[15px] font-bold text-white disabled:opacity-60"
                 >
                   {loading
                     ? parseStep
                       ? `${parseStep} 파싱 중...`
                       : "일정 파싱 중..."
-                    : "이 구성을 적용하여 일정 파싱"}
+                    : "이 팀 구성으로 행사 추출하기 →"}
                 </button>
               ) : (
                 failedHalves.map((half) => (
@@ -643,7 +810,7 @@ export function ManualImportWizard() {
                     type="button"
                     disabled={loading}
                     onClick={() => void parseWithProfile([half])}
-                    className="font-display flex-1 cursor-pointer rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    className="font-display flex-1 cursor-pointer rounded-xl bg-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {loading && parseStep
                       ? `${parseStep} 파싱 중...`
@@ -651,22 +818,7 @@ export function ManualImportWizard() {
                   </button>
                 ))
               )}
-              <button type="button" onClick={reset} className="rounded-lg border border-border px-4 text-sm text-fg3">
-                처음부터
-              </button>
             </div>
-          </section>
-        ) : null}
-
-        {phase === "parsed" && parsed ? (
-          <section className="flex flex-col gap-3">
-            <p className="text-sm text-fg2">고정 부서표로 파싱된 연간 계획 JSON입니다. 보드에는 동기화하지 않습니다.</p>
-            <pre className="overflow-x-auto rounded-xl border border-border bg-[#111118] p-4 text-xs text-cyan-200">
-              {JSON.stringify(parsed, null, 2)}
-            </pre>
-            <button type="button" onClick={reset} className="rounded-lg border border-border px-4 py-2 text-sm text-fg3">
-              처음부터
-            </button>
           </section>
         ) : null}
       </div>
