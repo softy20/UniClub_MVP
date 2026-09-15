@@ -10,15 +10,17 @@ import {
   readManualFile,
   type ManualFilePayload,
 } from "../lib/manual-file";
-import type {
-  ClarifyingQuestion,
-  ClubData,
-  ClubEvent,
-  ClubProfile,
-  OnboardingChatMessage,
-  OnboardingQuestionCategory,
-  QuestionOption,
-  RoleDefinition,
+import {
+  CLUB_GENRES,
+  type ClarifyingQuestion,
+  type ClubData,
+  type ClubEvent,
+  type ClubGenre,
+  type ClubProfile,
+  type OnboardingChatMessage,
+  type OnboardingQuestionCategory,
+  type QuestionOption,
+  type RoleDefinition,
 } from "../lib/types";
 import { ManualPreview } from "./ManualPreview";
 import { RoleChip } from "./marks";
@@ -113,11 +115,12 @@ function mergeEvents(...groups: Array<ClubEvent[] | null>): ClubEvent[] {
   return merged.sort((a, b) => a.target_month - b.target_month);
 }
 
-function clubDataFromProfile(profile: ClubProfile, events: ClubEvent[]): ClubData {
+function clubDataFromProfile(profile: ClubProfile, events: ClubEvent[], genre: ClubGenre): ClubData {
   return {
     club_info: {
       club_name: profile.club_name,
       academic_year: profile.academic_year,
+      club_genre: genre,
       roles: profile.roles.map((role) => ({
         role_name: role.role_name,
         ...(role.description ? { description: role.description } : {}),
@@ -255,7 +258,11 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return payload as T;
 }
 
-export function ManualImportWizard() {
+type ManualImportWizardProps = {
+  onApply: (data: ClubData) => void;
+};
+
+export function ManualImportWizard({ onApply }: ManualImportWizardProps) {
   const [phase, setPhase] = useState<Phase>("input");
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -278,6 +285,7 @@ export function ManualImportWizard() {
   const [parseStep, setParseStep] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [genre, setGenre] = useState<ClubGenre>("other");
 
   function reset() {
     setPhase("input");
@@ -302,6 +310,7 @@ export function ManualImportWizard() {
     setParseStep("");
     setLoading(false);
     setError("");
+    setGenre("other");
   }
 
   async function onFile(file: File | undefined) {
@@ -422,6 +431,7 @@ export function ManualImportWizard() {
       file: filePayloadForApi(filePayload),
       profile,
       months,
+      genre,
     });
     return result.data.events;
   }
@@ -477,7 +487,7 @@ export function ManualImportWizard() {
       }
 
       if (nextFirst && nextSecond && nextFailed.size === 0) {
-        setParsed(clubDataFromProfile(profile, mergeEvents(nextFirst, nextSecond)));
+        setParsed(clubDataFromProfile(profile, mergeEvents(nextFirst, nextSecond), genre));
         setPhase("parsed");
         return;
       }
@@ -516,6 +526,7 @@ export function ManualImportWizard() {
         <ManualPreview
           data={parsed}
           onChange={setParsed}
+          onApply={onApply}
           onBack={profile ? () => setPhase("locked") : undefined}
           onReset={reset}
         />
@@ -581,7 +592,7 @@ export function ManualImportWizard() {
                       <p className="text-[12px] text-fg3">
                         {filePayload
                           ? "파일이 첨부되었습니다. 미리보기는 건너뛰고 추출 시 서버에서 읽습니다."
-                          : "텍스트가 입력칸에 채워졌습니다."}
+                          : "텍스트가 입력칸에 채워졌습니다. 긴 워드 매뉴얼도 여기서 바로 추출합니다."}
                       </p>
                     </div>
                   </div>
@@ -770,6 +781,32 @@ export function ManualImportWizard() {
               {profile.roles.length === 1 && profile.roles[0].role_name === "공통" ? (
                 <p className="mt-4 text-[12px] text-fg3">역할이 없어도 공통으로 일정을 만들 수 있습니다.</p>
               ) : null}
+            </div>
+            <div className="mb-5 rounded-[20px] border border-border bg-card p-8">
+              <p className="mb-2 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">동아리 장르</p>
+              <p className="mb-4 text-[13px] leading-relaxed text-fg3">
+                매뉴얼에 준비 TO-DO가 비어 있으면, 고른 장르의 표준 운영으로 보충합니다. 미리보기에서 지울 수 있습니다.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CLUB_GENRES.map((item) => {
+                  const selected = genre === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setGenre(item.id)}
+                      className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] font-semibold"
+                      style={{
+                        border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                        background: selected ? "rgba(0,102,255,0.08)" : "var(--bg)",
+                        color: selected ? "var(--accent)" : "var(--fg2)",
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {firstEvents || secondEvents || failedHalves.length > 0 ? (
               <p className="mb-3 text-[12px] text-fg3">

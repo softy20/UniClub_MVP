@@ -5,6 +5,8 @@ export const MANUAL_SIZE_GUIDE =
   "파일은 4MB 이하만 올려 주세요. 사진이 들어 있으면 용량이 커지니, 글자만 남기면 매뉴얼이 훨씬 가벼워집니다.";
 export const MANUAL_ACCEPT = ".docx,.pdf,.txt,.md,.markdown,.hwp,.hwpx";
 export const MAX_MANUAL_FILE_BYTES = 4 * 1024 * 1024;
+const DOCX_FAIL_MESSAGE =
+  "워드(.docx) 파일이 아니거나 손상되었습니다. 한글 파일을 변환했는지 확인해 주세요.";
 
 export type ManualFileKind = "docx" | "pdf" | "text";
 
@@ -50,6 +52,19 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+async function extractDocxFile(file: File): Promise<string> {
+  const loaded = await import("mammoth");
+  try {
+    const result = await loaded.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    const text = result.value.trim();
+    if (!text) throw new Error("DOCX에서 텍스트를 읽지 못했습니다.");
+    return text;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("DOCX에서")) throw error;
+    throw new Error(DOCX_FAIL_MESSAGE);
+  }
+}
+
 export async function readManualFile(file: File): Promise<{ payload: ManualFilePayload; previewText: string }> {
   const kind = classifyManualFile(file);
   if (kind === "hwp") throw new Error(HWP_MESSAGE);
@@ -69,6 +84,19 @@ export async function readManualFile(file: File): Promise<{ payload: ManualFileP
         media_type: mimeFor(kind, file),
         data: "",
         kind,
+      },
+      previewText,
+    };
+  }
+
+  if (kind === "docx") {
+    const previewText = await extractDocxFile(file);
+    return {
+      payload: {
+        name: file.name,
+        media_type: "text/plain",
+        data: "",
+        kind: "text",
       },
       previewText,
     };

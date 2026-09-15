@@ -8,3 +8,4 @@ dist
 .impeccable/mocks
 .env
 
+node_modules

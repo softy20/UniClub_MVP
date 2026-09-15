@@ -7,19 +7,24 @@ import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
+import { loadClubData, saveClubData } from "./lib/club-store";
 import { useKstNow } from "./lib/kst";
 import { buildOpsEvents } from "./lib/ops";
 import type { ClubData } from "./lib/types";
 
-const data = club as ClubData;
+const seed = club as ClubData;
 
 export default function App() {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
+  const [data, setData] = useState<ClubData>(() => loadClubData(seed));
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const events = useMemo(() => buildOpsEvents(data, clock.civil, done), [clock.year, clock.month, clock.day, done]);
+  const events = useMemo(
+    () => buildOpsEvents(data, clock.civil, done),
+    [data, clock.year, clock.month, clock.day, done],
+  );
   const selected = events.find((event) => event.id === selectedId) ?? null;
   const totalTasks = events.reduce((sum, event) => sum + event.checklist.length, 0);
   const totalDone = events.reduce((sum, event) => sum + event.checklist.filter((item) => item.done).length, 0);
@@ -38,6 +43,12 @@ export default function App() {
   function go(next: AppPage) {
     setPage(next);
     setSelectedId(null);
+  }
+
+  function applyClubData(next: ClubData) {
+    saveClubData(next);
+    setData(next);
+    go("calendar");
   }
 
   return (
@@ -80,7 +91,7 @@ export default function App() {
             <MakeCalendar events={events} clock={clock} onSelect={(event) => setSelectedId(event.id)} />
           ) : null}
           {page === "tasks" ? <TasksPage events={events} onToggle={toggle} /> : null}
-          {page === "manual" ? <AiParsePage /> : null}
+          {page === "manual" ? <AiParsePage onApply={applyClubData} /> : null}
         </div>
       </main>
 

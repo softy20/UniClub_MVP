@@ -4,8 +4,10 @@ import { createAnthropic, firstToolUse, MAX_ONBOARDING_TURNS, MODEL_ID } from ".
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
   buildManualUserContent,
+  excerptForOnboarding,
   hasManualContent,
   resolveManualInput,
+  withManualText,
   type ResolvedManual,
 } from "./_shared/manual-file.ts";
 import {
@@ -87,7 +89,7 @@ export default async (req: Request) => {
               ? "이번이 마지막 턴이다. 더 묻지 말고 lock_club_profile으로 부서표를 확정하라. roles가 비면 공통만 넣어라."
               : "부서 없이 진행/공통/사적 모임이면 즉시 잠그고 roles는 공통만 둔다. 정보가 충분하면 잠그고, 아니면 선택지 질문만 1~2개 하라.",
           ].join("\n\n"),
-          resolved,
+          withManualText(resolved, excerptForOnboarding(resolved.text)),
         ),
       },
       ...messages.map((message) => ({
