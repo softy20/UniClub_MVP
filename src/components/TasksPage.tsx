@@ -1,15 +1,22 @@
-import { useState } from "react";
-import { ALL_CATS, type FigmaCat, type OpsEvent } from "../lib/ops";
-import { CategoryFilter, Tag } from "./marks";
+import { useEffect, useMemo, useState } from "react";
+import { groupByRole, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
+import { CategoryFilter, RoleChip, Tag } from "./marks";
 
 type TasksPageProps = {
   events: OpsEvent[];
+  roster: string[];
   onToggle: (checkId: string) => void;
 };
 
-export function TasksPage({ events, onToggle }: TasksPageProps) {
+export function TasksPage({ events, roster, onToggle }: TasksPageProps) {
   const [showDone, setShowDone] = useState(false);
-  const [active, setActive] = useState<Set<FigmaCat>>(new Set(ALL_CATS));
+  const categories = useMemo(() => uniqueCategoryLabels(events), [events]);
+  const [active, setActive] = useState<Set<string>>(() => new Set(categories));
+  const categoryKey = categories.join("|");
+
+  useEffect(() => {
+    setActive(new Set(categories));
+  }, [categoryKey]);
 
   const tasks = events
     .flatMap((event) =>
@@ -23,11 +30,13 @@ export function TasksPage({ events, onToggle }: TasksPageProps) {
     .filter((task) => (showDone || !task.done) && active.has(task.category))
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
+  const groups = groupByRole(tasks, roster, (task) => task.role);
+
   return (
     <div className="fade-in h-full overflow-y-auto p-6">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-[12px] tracking-widest text-fg3 uppercase">
-          할 일 목록 · {tasks.length}개 {showDone ? "" : "미완료"}
+          부서별 할 일 · {tasks.length}개 {showDone ? "" : "미완료"}
         </p>
         <button
           type="button"
@@ -44,6 +53,7 @@ export function TasksPage({ events, onToggle }: TasksPageProps) {
       </div>
       <div className="mb-5">
         <CategoryFilter
+          events={events}
           active={active}
           onToggle={(cat) => {
             setActive((prev) => {
@@ -54,36 +64,50 @@ export function TasksPage({ events, onToggle }: TasksPageProps) {
             });
           }}
           onToggleAll={() =>
-            setActive((prev) => (prev.size === ALL_CATS.length ? new Set() : new Set(ALL_CATS)))
+            setActive((prev) =>
+              categories.every((cat) => prev.has(cat)) ? new Set() : new Set(categories),
+            )
           }
         />
       </div>
-      <div className="flex flex-col gap-2">
-        {tasks.map((task) => (
-          <label
-            key={task.id}
-            className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3 hover:opacity-90"
-          >
-            <input
-              type="checkbox"
-              checked={task.done}
-              onChange={() => onToggle(task.id)}
-              className="size-4 shrink-0 cursor-pointer accent-indigo-500"
-            />
-            <div className="min-w-0 flex-1">
-              <p className={`font-display text-sm text-fg ${task.done ? "line-through opacity-40" : ""}`}>{task.text}</p>
-              <div className="mt-1 flex items-center gap-2">
-                <Tag cat={task.category} />
-                <span className="text-[12px] text-fg3">{task.eventTitle}</span>
-              </div>
+      <div className="flex flex-col gap-6">
+        {groups.map((group) => (
+          <section key={group.role}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <RoleChip name={group.role} roster={roster} />
+              <span className="tabular text-[11px] text-fg3">{group.items.length}개</span>
             </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[12px] text-fg3">D-Day</p>
-              <p className="text-xs font-bold" style={{ color: task.daysBefore <= 3 ? "#ef4444" : "var(--accent2)" }}>
-                {task.daysBefore}일 전
-              </p>
+            <div className="flex flex-col gap-2">
+              {group.items.map((task) => (
+                <label
+                  key={task.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3 hover:opacity-90"
+                >
+                  <input
+                    type="checkbox"
+                    checked={task.done}
+                    onChange={() => onToggle(task.id)}
+                    className="size-4 shrink-0 cursor-pointer accent-indigo-500"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className={`font-display text-sm text-fg ${task.done ? "line-through opacity-40" : ""}`}>
+                      {task.text}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Tag cat={task.category} />
+                      <span className="text-[12px] text-fg3">{task.eventTitle}</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[12px] text-fg3">D-Day</p>
+                    <p className="text-xs font-bold" style={{ color: task.daysBefore <= 3 ? "#ef4444" : "var(--accent2)" }}>
+                      {task.daysBefore}일 전
+                    </p>
+                  </div>
+                </label>
+              ))}
             </div>
-          </label>
+          </section>
         ))}
         {tasks.length === 0 ? (
           <div className="py-16 text-center">

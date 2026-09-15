@@ -113,6 +113,15 @@ body {
   }
 }
 
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
 .slide-in {
   animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -123,4 +132,8 @@ body {
 
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.progress-indeterminate {
+  animation: progress-indeterminate 1.15s ease-in-out infinite;
 }

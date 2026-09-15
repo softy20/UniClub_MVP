@@ -40,14 +40,62 @@ function dayFromWeekLabel(week?: string): number {
   return 15;
 }
 
+function isValidDate(date: Date): boolean {
+  return Number.isFinite(date.getTime());
+}
+
+function calendarYearForMonth(academicYear: number, month: number): number {
+  return month <= 2 ? academicYear + 1 : academicYear;
+}
+
+function parseEventDate(value: string, fallbackYear: number): Date | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const iso = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(trimmed);
+  if (iso) {
+    const date = atNoon(new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
+    return isValidDate(date) ? date : null;
+  }
+
+  const korean = /(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/.exec(trimmed);
+  if (korean) {
+    const year = korean[1] ? Number(korean[1]) : fallbackYear;
+    const date = atNoon(new Date(year, Number(korean[2]) - 1, Number(korean[3])));
+    return isValidDate(date) ? date : null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!isValidDate(parsed)) return null;
+  return atNoon(parsed);
+}
+
+export function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function estimateEventDate(event: ClubEvent, academicYear: number): Date {
-  if (event.event_date) return atNoon(new Date(event.event_date));
-  return atNoon(new Date(academicYear, event.target_month - 1, dayFromWeekLabel(event.target_week)));
+  const month = event.target_month >= 1 && event.target_month <= 12 ? event.target_month : 3;
+  const fallbackYear = calendarYearForMonth(academicYear, month);
+  const fallback = atNoon(new Date(fallbackYear, month - 1, dayFromWeekLabel(event.target_week)));
+  if (!event.event_date) return fallback;
+
+  const parsed = parseEventDate(event.event_date, fallbackYear);
+  if (!parsed) return fallback;
+  if (parsed.getFullYear() < academicYear) {
+    const parsedMonth = parsed.getMonth() + 1;
+    return atNoon(new Date(calendarYearForMonth(academicYear, parsedMonth), parsed.getMonth(), parsed.getDate()));
+  }
+  return parsed;
 }
 
 export function estimateGiftDate(gift: GiftOccasion, academicYear: number): Date {
   if (gift.occasion.includes("추석")) return atNoon(CHUSEOK_2026);
-  return atNoon(new Date(academicYear, gift.target_month - 1, 20));
+  const month = gift.target_month >= 1 && gift.target_month <= 12 ? gift.target_month : 3;
+  return atNoon(new Date(calendarYearForMonth(academicYear, month), month - 1, 20));
 }
 
 function flattenTasks(data: ClubData): BoardTask[] {

@@ -102,6 +102,10 @@ export function enrichEventTasks(event: ClubEvent, profile: ClubProfile, genre: 
     if (inferred.length >= MAX_INFERRED_PER_EVENT) break;
     const already = [...tasks, ...inferred].some((task) => item.match.test(task.task_name));
     if (already) continue;
+    if (item.id === "stay" || item.id === "transport") {
+      const venue = `${event.event_name} ${event.location ?? ""} ${tasks.map((task) => task.task_name).join(" ")}`;
+      if (/댁|자택|본가|우리집|자집/.test(venue)) continue;
+    }
     inferred.push({
       task_id: `${event.event_id}_inferred_${item.id}`,
       task_name: item.task_name,

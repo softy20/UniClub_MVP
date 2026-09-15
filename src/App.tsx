@@ -7,9 +7,9 @@ import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
-import { loadClubData, saveClubData } from "./lib/club-store";
+import { loadClubData, patchClubEvent, saveClubData, type ClubEventPatch } from "./lib/club-store";
 import { useKstNow } from "./lib/kst";
-import { buildOpsEvents } from "./lib/ops";
+import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
 import type { ClubData } from "./lib/types";
 
 const seed = club as ClubData;
@@ -45,10 +45,30 @@ export default function App() {
     setSelectedId(null);
   }
 
-  function applyClubData(next: ClubData) {
-    saveClubData(next);
+  function persist(next: ClubData) {
+    try {
+      saveClubData(next);
+    } catch (error) {
+      console.error("클럽 데이터 저장 실패", error);
+    }
     setData(next);
+  }
+
+  function applyClubData(next: ClubData) {
+    persist(next);
     go("calendar");
+  }
+
+  function patchEvent(eventId: string, patch: ClubEventPatch) {
+    setData((prev) => {
+      const next = patchClubEvent(prev, eventId, patch);
+      try {
+        saveClubData(next);
+      } catch (error) {
+        console.error("클럽 데이터 저장 실패", error);
+      }
+      return next;
+    });
   }
 
   return (
@@ -88,9 +108,21 @@ export default function App() {
             />
           ) : null}
           {page === "calendar" ? (
-            <MakeCalendar events={events} clock={clock} onSelect={(event) => setSelectedId(event.id)} />
+            <MakeCalendar
+              key={`${data.club_info.club_name}-${data.club_info.academic_year}-${data.events.length}`}
+              events={events}
+              clock={clock}
+              focusEvent={selected}
+              onSelect={(event) => setSelectedId(event.id)}
+            />
           ) : null}
-          {page === "tasks" ? <TasksPage events={events} onToggle={toggle} /> : null}
+          {page === "tasks" ? (
+            <TasksPage
+              events={events}
+              roster={data.club_info.roles.map((role) => role.role_name)}
+              onToggle={toggle}
+            />
+          ) : null}
           {page === "manual" ? <AiParsePage onApply={applyClubData} /> : null}
         </div>
       </main>
@@ -103,7 +135,15 @@ export default function App() {
             aria-label="패널 닫기"
             onClick={() => setSelectedId(null)}
           />
-          <EventPanel event={selected} onClose={() => setSelectedId(null)} onToggle={toggle} />
+          <EventPanel
+            event={selected}
+            today={clock.civil}
+            roster={data.club_info.roles.map((role) => role.role_name)}
+            categories={uniqueCategoryLabels(data.events)}
+            onClose={() => setSelectedId(null)}
+            onToggle={toggle}
+            onPatch={patchEvent}
+          />
         </>
       ) : null}
     </div>
