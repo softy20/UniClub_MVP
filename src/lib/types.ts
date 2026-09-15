@@ -97,15 +97,22 @@ export type RoleDefinition = {
   description?: string;
 };
 
+export type CategoryDefinition = {
+  label: string;
+  aliases: string[];
+};
+
 export type ClubProfile = {
   club_name: string;
   academic_year: number;
   roles: RoleDefinition[];
   default_role: string;
+  categories: CategoryDefinition[];
+  default_category: string;
   locked: boolean;
 };
 
-export type OnboardingQuestionCategory = "roles" | "aliases" | "club_name";
+export type OnboardingQuestionCategory = "roles" | "aliases" | "club_name" | "event_categories";
 
 export type QuestionOption = {
   id: string;

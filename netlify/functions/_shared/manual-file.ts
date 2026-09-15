@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { monthHeadingHits } from "../../../src/lib/manual-months.ts";
 import { isRecord } from "./schema.ts";
 
 export const HWP_MESSAGE = "한글(.hwp) 파일은 워드(.docx)로 변환하여 업로드해 주세요";
@@ -143,14 +144,7 @@ export function excerptForOnboarding(text: string): string {
 type MonthSpan = { month: number; start: number; end: number };
 
 function findMonthSections(text: string): MonthSpan[] {
-  const hits: { month: number; index: number }[] = [];
-  const re = /(?:^|\n)[ \t#\-]*((?:1[0-2]|[1-9]))\s*월/g;
-  for (const match of text.matchAll(re)) {
-    const month = Number(match[1]);
-    if (month >= 1 && month <= 12) {
-      hits.push({ month, index: match.index ?? 0 });
-    }
-  }
+  const hits = monthHeadingHits(text);
   if (hits.length < 3) return [];
   return hits.map((hit, index) => ({
     month: hit.month,
