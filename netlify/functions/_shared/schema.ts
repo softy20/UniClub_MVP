@@ -1,14 +1,17 @@
-import type {
-  ClarifyingQuestion,
-  ClubData,
-  ClubEvent,
-  ClubProfile,
-  ClubTask,
-  OnboardingQuestion,
-  OnboardingQuestionCategory,
-  QuestionOption,
-  RoleDefinition,
+import {
+  isClubGenre,
+  type ClarifyingQuestion,
+  type ClubData,
+  type ClubEvent,
+  type ClubGenre,
+  type ClubProfile,
+  type ClubTask,
+  type OnboardingQuestion,
+  type OnboardingQuestionCategory,
+  type QuestionOption,
+  type RoleDefinition,
 } from "../../../src/lib/types.ts";
+import { enrichEventTasks } from "./playbook.ts";
 
 const QUESTION_CATEGORIES: OnboardingQuestionCategory[] = ["roles", "aliases", "club_name"];
 const GENERIC_CLUB_NAMES = new Set(["", "동아리", "미상", "unknown", "클럽", "club"]);
@@ -228,20 +231,25 @@ export function resolveAssignedRole(raw: string, profile: ClubProfile): string {
   return profile.default_role;
 }
 
-export function constrainClubData(data: ClubData, profile: ClubProfile): ClubData {
+export function parseClubGenre(value: unknown): ClubGenre {
+  return isClubGenre(value) ? value : "other";
+}
+
+export function constrainClubData(data: ClubData, profile: ClubProfile, genre: ClubGenre = "other"): ClubData {
   return {
     ...data,
     club_info: {
       ...data.club_info,
       club_name: profile.club_name,
       academic_year: profile.academic_year,
+      club_genre: genre,
       roles: profile.roles.map((role) => ({
         role_name: role.role_name,
         ...(role.description ? { description: role.description } : {}),
       })),
     },
     events: data.events.map((event) =>
-      fillMissingCoreTasks(
+      enrichEventTasks(
         {
           ...event,
           tasks: event.tasks.map((task) => ({
@@ -250,58 +258,10 @@ export function constrainClubData(data: ClubData, profile: ClubProfile): ClubDat
           })),
         },
         profile,
+        genre,
       ),
     ),
   };
-}
-
-const CORE_PREP = [
-  {
-    id: "venue",
-    task_name: "장소 대여/예약",
-    days_before_dday: 14,
-    match: /장소|대여|예약|숙소|대관/,
-    prefer: /기획|운영/,
-  },
-  {
-    id: "notice",
-    task_name: "인원 조사 및 공지",
-    days_before_dday: 14,
-    match: /공지|인원|조사|안내/,
-    prefer: /홍보/,
-  },
-  {
-    id: "supply",
-    task_name: "물품/예산 준비",
-    days_before_dday: 7,
-    match: /물품|장보기|예산|준비물|차량|구매|정산/,
-    prefer: /총무|재정/,
-  },
-] as const;
-
-const MAX_INFERRED_PER_EVENT = 3;
-
-function pickRole(profile: ClubProfile, prefer: RegExp): string {
-  const hit = profile.roles.find((role) => prefer.test(role.role_name));
-  return hit?.role_name ?? profile.default_role;
-}
-
-function fillMissingCoreTasks(event: ClubEvent, profile: ClubProfile): ClubEvent {
-  const inferred: ClubTask[] = [];
-  for (const core of CORE_PREP) {
-    if (inferred.length >= MAX_INFERRED_PER_EVENT) break;
-    if (event.tasks.some((task) => core.match.test(task.task_name))) continue;
-    inferred.push({
-      task_id: `${event.event_id}_inferred_${core.id}`,
-      task_name: core.task_name,
-      days_before_dday: core.days_before_dday,
-      assigned_role: pickRole(profile, core.prefer),
-      is_mandatory: true,
-      action_details: "원문에 없어 핵심 준비로 보충",
-    });
-  }
-  if (inferred.length === 0) return event;
-  return { ...event, tasks: [...event.tasks, ...inferred] };
 }
 
 function dedupeRoles(roles: RoleDefinition[]): RoleDefinition[] {

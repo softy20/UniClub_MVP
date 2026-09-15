@@ -2,8 +2,10 @@ import { createAnthropic, firstToolUse, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
   buildManualUserContent,
+  excerptForOnboarding,
   hasManualContent,
   resolveManualInput,
+  withManualText,
   type ResolvedManual,
 } from "./_shared/manual-file.ts";
 import { buildStartSystem, isDraftRolesPayload, proposeClubRolesTool } from "./_shared/onboarding.ts";
@@ -58,7 +60,7 @@ export default async (req: Request) => {
           role: "user",
           content: buildManualUserContent(
             `현재 학년도는 ${currentYear}년이다. 다음 매뉴얼에서 부서 초안과 선택지 버튼이 있는 확인 질문 1~2개를 추출하라.`,
-            resolved,
+            withManualText(resolved, excerptForOnboarding(resolved.text)),
           ),
         },
       ],

@@ -1,20 +1,23 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { ClubData, ClubProfile } from "../../src/lib/types.ts";
+import { clubGenreLabel, type ClubData, type ClubGenre, type ClubProfile } from "../../src/lib/types.ts";
 import { createAnthropic, firstToolUse, MODEL_ID, parseModelJson, textFromContent } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
   buildManualUserContent,
   hasManualContent,
   resolveManualInput,
+  sliceManualForMonths,
+  withManualText,
   type ResolvedManual,
 } from "./_shared/manual-file.ts";
-import { constrainClubData, isClubData, isClubProfile, lockClubProfile } from "./_shared/schema.ts";
+import { constrainClubData, isClubData, isClubProfile, lockClubProfile, parseClubGenre } from "./_shared/schema.ts";
 
 type ParseBody = {
   text?: unknown;
   file?: unknown;
   profile?: unknown;
   months?: unknown;
+  genre?: unknown;
 };
 
 const extractClubPlanTool: Anthropic.Tool = {
@@ -75,6 +78,7 @@ const extractClubPlanTool: Anthropic.Tool = {
                   is_mandatory: { type: "boolean" },
                   action_details: { type: "string" },
                   checklist: { type: "array", items: { type: "string" } },
+                  source: { type: "string", enum: ["extracted", "inferred"] },
                 },
               },
             },
@@ -126,7 +130,7 @@ function applyMonthFilter(data: ClubData, months: number[] | null): ClubData {
   };
 }
 
-function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: number[] | null): string {
+function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: number[] | null, genre: ClubGenre): string {
   const roleLines = profile.roles
     .map((role) => {
       const aliases = role.aliases.length > 0 ? ` (별칭: ${role.aliases.join(", ")})` : "";
@@ -136,6 +140,7 @@ function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: nu
   const monthRule = months
     ? `- 반드시 target_month가 ${months.join(", ")}월인 행사만 추출하라. 다른 월 행사는 생략하라.`
     : "- 문서에 있는 연간 행사를 추출하라.";
+  const genreLabel = clubGenreLabel(genre);
 
   return `너는 동아리 인수인계 매뉴얼에서 연간 일정과 세부 TO-DO를 추출하는 오퍼레이션 파서다.
 
@@ -147,7 +152,9 @@ function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: nu
 - 별칭이 있으면 해당 role_name으로 정규화하라.
 - 담당자가 없으면 default_role="${profile.default_role}"를 넣어라.
 ${monthRule}
-- 원문에 있는 업무만 추출하라. 없는 준비 TO-DO를 추론하여 만들지 마라.
+- 원문 일정을 우선 추출하라. 원문에 있는 내용은 추측으로 덮어쓰지 마라.
+- 행사명만 있고 준비 TO-DO가 거의 없으면 장르(${genreLabel})의 핵심 준비만 보충하라.
+- 원문에서 온 항목은 source "extracted", 보충 항목은 source "inferred"로 표시하라.
 
 허용 role_name:
 ${roleLines}
@@ -155,6 +162,7 @@ ${roleLines}
 기본 역할: ${profile.default_role}
 동아리명: ${profile.club_name}
 학년도: ${currentYear}
+장르: ${genreLabel}
 
 그 외 규칙:
 - 반드시 extract_club_plan 도구만 호출하라.
@@ -169,6 +177,7 @@ ${roleLines}
 - ClubTask.assigned_role: 잠긴 ClubProfile.roles.role_name 또는 default_role만
 - ClubTask.days_before_dday: 0 이상의 정수. 음수 금지
 - ClubTask.is_mandatory: 필수 업무면 true
+- ClubTask.source: extracted 또는 inferred
 - club_info.roles: 잠긴 ClubProfile.roles와 동일해야 한다`;
 }
 
@@ -211,28 +220,30 @@ export default async (req: Request) => {
 
   const currentYear = new Date().getFullYear();
   const profile = lockClubProfile({ ...body.profile, academic_year: currentYear });
+  const genre = parseClubGenre(body.genre);
   const monthHint = months ? `${months.join(", ")}월 행사만` : "연간 일정과 TO-DO를";
+  const forModel = withManualText(resolved, sliceManualForMonths(resolved.text, months));
 
   try {
     const client = createAnthropic();
     const response = await client.messages.create({
       model: MODEL_ID,
-      max_tokens: !months || months.length > 3 ? 4096 : months.length === 1 ? 1536 : 2048,
-      system: buildSystemPrompt(profile, currentYear, months),
+      max_tokens: !months || months.length > 3 ? 8192 : months.length === 1 ? 2048 : 4096,
+      system: buildSystemPrompt(profile, currentYear, months, genre),
       tools: [extractClubPlanTool],
       tool_choice: { type: "tool", name: "extract_club_plan" },
       messages: [
         {
           role: "user",
           content: buildManualUserContent(
-            `현재 학년도는 ${currentYear}년이다. 잠긴 부서표를 지키면서 ${monthHint} 추출하라. assigned_role은 허용 역할 중에서만 지정하고, 원문에 없는 TO-DO는 만들지 마라.`,
-            resolved,
+            `현재 학년도는 ${currentYear}년이다. 잠긴 부서표를 지키면서 ${monthHint} 추출하라. assigned_role은 허용 역할 중에서만 지정하라. 원문 우선, 준비 TO-DO가 비면 장르(${clubGenreLabel(genre)}) 핵심만 source inferred로 보충하라.`,
+            forModel,
           ),
         },
       ],
     });
 
-    const data = applyMonthFilter(constrainClubData(parseClubData(response), profile), months);
+    const data = applyMonthFilter(constrainClubData(parseClubData(response), profile, genre), months);
     return json(200, { ok: true, data, profile });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : String(error), 500);

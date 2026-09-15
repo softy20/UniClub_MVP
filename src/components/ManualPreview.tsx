@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { dayDiff, estimateEventDate } from "../lib/board";
 import { readKst } from "../lib/kst";
-import type { ClubData, ClubEvent, ClubTask } from "../lib/types";
+import { isInferredTask, type ClubData, type ClubEvent, type ClubTask } from "../lib/types";
 import { DminusBadge, RoleChip } from "./marks";
 
 export type AcademicTerm = "winter" | "spring" | "summer" | "fall" | "all";
@@ -22,6 +22,7 @@ const SEMESTER_TABS: {
 type ManualPreviewProps = {
   data: ClubData;
   onChange: (next: ClubData) => void;
+  onApply: (next: ClubData) => void;
   onBack?: () => void;
   onReset?: () => void;
 };
@@ -54,7 +55,7 @@ function defaultRole(data: ClubData): string {
   return data.club_info.roles[0]?.role_name ?? "공통";
 }
 
-export function ManualPreview({ data, onChange, onBack, onReset }: ManualPreviewProps) {
+export function ManualPreview({ data, onChange, onApply, onBack, onReset }: ManualPreviewProps) {
   const [term, setTerm] = useState<AcademicTerm>("all");
   const [tooltipTab, setTooltipTab] = useState<AcademicTerm | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -64,6 +65,10 @@ export function ManualPreview({ data, onChange, onBack, onReset }: ManualPreview
   const today = useMemo(() => readKst().civil, []);
   const roster = data.club_info.roles.map((role) => role.role_name);
   const totalTasks = data.events.reduce((sum, event) => sum + event.tasks.length, 0);
+  const inferredCount = data.events.reduce(
+    (sum, event) => sum + event.tasks.filter(isInferredTask).length,
+    0,
+  );
 
   const visible = data.events.filter((event) => term === "all" || termForMonth(event.target_month) === term);
 
@@ -136,7 +141,11 @@ export function ManualPreview({ data, onChange, onBack, onReset }: ManualPreview
           </div>
           <h1 className="font-display text-[22px] font-extrabold text-fg">행사 계획 미리보기 &amp; 편집</h1>
           <p className="mt-1 text-[13px] text-fg3">
-            {data.club_info.academic_year}년 · {data.club_info.club_name} · 초안만 수정되며 보드에는 아직 반영되지 않습니다.
+            {data.club_info.academic_year}년 · {data.club_info.club_name} · 초안을 확인한 뒤 달력에 적용하면 대시보드·캘린더·할 일에
+            반영됩니다.
+            {inferredCount > 0
+              ? ` 원문에 없던 준비 ${inferredCount}건은 “보충됨”으로 표시됩니다. 필요 없으면 삭제하세요.`
+              : ""}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -151,9 +160,10 @@ export function ManualPreview({ data, onChange, onBack, onReset }: ManualPreview
           ) : null}
           <button
             type="button"
-            disabled
-            title="보드 동기화는 M5에서 연결됩니다."
-            className="rounded-[10px] bg-accent px-5 py-2 text-[13px] font-bold text-white opacity-50"
+            disabled={data.events.length === 0}
+            title={data.events.length === 0 ? "적용할 행사가 없습니다." : undefined}
+            onClick={() => onApply(data)}
+            className="cursor-pointer rounded-[10px] bg-accent px-5 py-2 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             달력에 적용 →
           </button>
@@ -292,6 +302,17 @@ export function ManualPreview({ data, onChange, onBack, onReset }: ManualPreview
                               className={`min-w-0 flex-1 text-[13px] ${checked ? "text-fg3 line-through opacity-50" : "text-fg"}`}
                             >
                               {task.task_name}
+                              {isInferredTask(task) ? (
+                                <span
+                                  className="ml-1.5 inline-flex translate-y-[-1px] items-center rounded-md px-1.5 py-px text-[10px] font-bold tracking-wide"
+                                  style={{
+                                    background: "rgba(245,158,11,0.12)",
+                                    color: "#b45309",
+                                  }}
+                                >
+                                  보충됨
+                                </span>
+                              ) : null}
                             </span>
                           )}
                           <div className="flex shrink-0 gap-0.5">
