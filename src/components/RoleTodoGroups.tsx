@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { CaretDown } from "@phosphor-icons/react";
 import type { ClubEventPatch } from "../lib/club-store";
 import { groupByRole } from "../lib/ops";
-import { DdayBadge, RoleChip, Tag } from "./marks";
+import { DdayBadge, RoleChip, RoleSelect, Tag } from "./marks";
 
 export type RoleTodoItem = {
   id: string;
@@ -309,22 +309,24 @@ export function RoleTodoGroups({
   const canAdd = canEdit && addTargets.length > 0;
 
   const groups = useMemo(() => {
-    const grouped = groupByRole(items, roster, (item) => item.role);
-    const byRole = new Map(grouped.map((group) => [group.role, group.items]));
-    const extras = grouped.map((group) => group.role).filter((role) => !roster.includes(role));
-    const roles = manageMode && canAdd ? [...roster, ...extras] : grouped.map((group) => group.role);
+    return groupByRole(items, roster, (item) => item.role)
+      .map((group) => {
+        const visible = showDone ? group.items : group.items.filter((item) => !item.done);
+        return {
+          role: group.role,
+          all: group.items,
+          visible,
+          doneCount: group.items.filter((item) => item.done).length,
+        };
+      })
+      .filter((group) => group.visible.length > 0);
+  }, [items, roster, showDone]);
 
-    return roles.map((role) => {
-      const all = byRole.get(role) ?? [];
-      const visible = showDone ? all : all.filter((item) => !item.done);
-      return {
-        role,
-        all,
-        visible,
-        doneCount: all.filter((item) => item.done).length,
-      };
-    }).filter((group) => (manageMode && canAdd) || group.visible.length > 0);
-  }, [items, roster, showDone, manageMode, canAdd]);
+  const roleChoices = useMemo(() => {
+    const used = items.map((item) => item.role.trim() || COMMON_ROLE);
+    const choices = [...new Set([...roster, ...used])].filter(Boolean);
+    return choices.length > 0 ? choices : [COMMON_ROLE];
+  }, [items, roster]);
 
   const visibleCount = items.filter((item) => showDone || !item.done).length;
 
@@ -382,7 +384,8 @@ export function RoleTodoGroups({
     setEditingDdayId(null);
   }
 
-  function startAdd(role: string) {
+  function startAdd() {
+    const role = groups[0]?.role ?? roleChoices[0] ?? COMMON_ROLE;
     expandRole(role);
     setAddingRole(role);
     setDraftText("");
@@ -393,7 +396,9 @@ export function RoleTodoGroups({
     const text = draftText.trim();
     const eventId = defaultEventId ?? addEventId;
     if (!text || !eventId) return;
-    onPatch(eventId, { addTask: { task_name: text, assigned_role: role || COMMON_ROLE } });
+    const assigned = role || COMMON_ROLE;
+    onPatch(eventId, { addTask: { task_name: text, assigned_role: assigned } });
+    expandRole(assigned);
     setDraftText("");
     setAddingRole(null);
   }
@@ -480,26 +485,6 @@ export function RoleTodoGroups({
                     />
                   );
                 })}
-                {group.visible.length === 0 && manageMode ? (
-                  <p className="text-[12px] text-fg3">이 직무에 표시할 할 일이 없습니다.</p>
-                ) : null}
-                {manageMode && canAdd ? (
-                  addingRole === group.role ? (
-                    <TodoAddForm
-                      draft={draftText}
-                      onDraft={setDraftText}
-                      onSubmit={() => submitAdd(group.role)}
-                      onCancel={cancelAdd}
-                      extra={
-                        !defaultEventId && eventChoices.length > 0 ? (
-                          <AddEventPicker value={addEventId} choices={eventChoices} onChange={setAddEventId} />
-                        ) : null
-                      }
-                    />
-                  ) : (
-                    <TodoAddButton onClick={() => startAdd(group.role)} />
-                  )
-                ) : null}
               </div>
             ) : null}
           </section>
@@ -509,24 +494,39 @@ export function RoleTodoGroups({
       {groups.length === 0 ? (
         <div className={variant === "tasks" ? "py-16 text-center" : undefined}>
           <p className={`text-fg3 ${variant === "tasks" ? "font-display font-semibold" : "text-sm"}`}>{emptyText}</p>
-          {manageMode && canAdd ? (
-            addingRole === COMMON_ROLE ? (
-              <TodoAddForm
-                draft={draftText}
-                onDraft={setDraftText}
-                onSubmit={() => submitAdd(COMMON_ROLE)}
-                onCancel={cancelAdd}
-                extra={
-                  !defaultEventId && eventChoices.length > 0 ? (
-                    <AddEventPicker value={addEventId} choices={eventChoices} onChange={setAddEventId} />
-                  ) : null
-                }
-              />
-            ) : (
-              <TodoAddButton onClick={() => startAdd(COMMON_ROLE)} />
-            )
-          ) : null}
         </div>
+      ) : null}
+
+      {manageMode && canAdd ? (
+        addingRole !== null ? (
+          <TodoAddForm
+            draft={draftText}
+            onDraft={setDraftText}
+            onSubmit={() => submitAdd(addingRole)}
+            onCancel={cancelAdd}
+            extra={
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-fg3">담당</span>
+                  <RoleSelect
+                    value={addingRole}
+                    choices={roleChoices}
+                    roster={roster}
+                    onChange={(role) => {
+                      expandRole(role);
+                      setAddingRole(role);
+                    }}
+                  />
+                </div>
+                {!defaultEventId && eventChoices.length > 0 ? (
+                  <AddEventPicker value={addEventId} choices={eventChoices} onChange={setAddEventId} />
+                ) : null}
+              </>
+            }
+          />
+        ) : (
+          <TodoAddButton onClick={startAdd} />
+        )
       ) : null}
     </div>
   );

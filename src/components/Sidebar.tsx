@@ -7,7 +7,7 @@ const NAV = [
   { id: "dashboard", label: "대시보드", icon: SquaresFour },
   { id: "calendar", label: "캘린더", icon: CalendarBlank },
   { id: "tasks", label: "할 일 목록", icon: CheckSquare },
-  { id: "manual", label: "AI 자동 추출", icon: Lightning },
+  { id: "manual", label: "AI 일정 추출", icon: Lightning },
 ] as const;
 
 type SidebarProps = {
@@ -117,5 +117,5 @@ export const PAGE_LABEL: Record<AppPage, string> = {
   dashboard: "대시보드",
   calendar: "캘린더",
   tasks: "할 일 목록",
-  manual: "AI 자동 추출",
+  manual: "AI 일정 추출",
 };
