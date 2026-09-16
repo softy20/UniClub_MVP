@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 import { monthCells } from "../lib/calendar";
 import type { KstClock } from "../lib/kst";
+import { EventDateButton, isoDateParts } from "./EventEditors";
 import { CategoryFilter } from "./marks";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -23,10 +24,21 @@ type MakeCalendarProps = {
   clock: KstClock;
   onSelect: (event: OpsEvent) => void;
   focusEvent?: OpsEvent | null;
+  focusToday?: boolean;
+  onTodayFocused?: () => void;
 };
 
-export function MakeCalendar({ events, clock, onSelect, focusEvent }: MakeCalendarProps) {
-  const initial = focusMonth(events, clock);
+export function MakeCalendar({
+  events,
+  clock,
+  onSelect,
+  focusEvent,
+  focusToday = false,
+  onTodayFocused,
+}: MakeCalendarProps) {
+  const initial = focusToday
+    ? { year: clock.year, month: clock.month }
+    : focusMonth(events, clock);
   const [viewYear, setViewYear] = useState(initial.year);
   const [viewMonth, setViewMonth] = useState(initial.month);
   const categories = useMemo(() => uniqueCategoryLabels(events), [events]);
@@ -43,6 +55,13 @@ export function MakeCalendar({ events, clock, onSelect, focusEvent }: MakeCalend
     setViewYear(focusEvent.date.getFullYear());
     setViewMonth(focusEvent.date.getMonth() + 1);
   }, [focusEvent?.id, focusTime]);
+
+  useEffect(() => {
+    if (!focusToday) return;
+    setViewYear(clock.year);
+    setViewMonth(clock.month);
+    onTodayFocused?.();
+  }, [focusToday, clock.year, clock.month, onTodayFocused]);
 
   function prevMonth() {
     if (viewMonth === 1) {
@@ -71,15 +90,6 @@ export function MakeCalendar({ events, clock, onSelect, focusEvent }: MakeCalend
       event.date.getFullYear() === viewYear &&
       event.date.getMonth() + 1 === viewMonth,
   );
-  const elsewhere = dated.filter(
-    (event) => event.date.getFullYear() !== viewYear || event.date.getMonth() + 1 !== viewMonth,
-  );
-
-  function goToEvents() {
-    const next = focusMonth(events, clock);
-    setViewYear(next.year);
-    setViewMonth(next.month);
-  }
 
   return (
     <div className="fade-in flex flex-col bg-bg">
@@ -92,9 +102,26 @@ export function MakeCalendar({ events, clock, onSelect, focusEvent }: MakeCalend
           >
             ‹
           </button>
-          <div className="w-[130px] text-center">
-            <span className="text-[22px] font-bold text-fg">{monthLabel}</span>
-          </div>
+          <EventDateButton
+            value={`${viewYear}-${String(viewMonth).padStart(2, "0")}-01`}
+            today={clock.civil}
+            defaultMonth={viewMonth}
+            align="center"
+            showSelected={false}
+            ariaLabel={`${monthLabel} 점프`}
+            triggerClassName="inline-flex min-w-[130px] cursor-pointer items-center justify-center gap-1 rounded-lg px-2 py-1 text-[22px] font-bold text-fg transition-colors duration-150 hover:bg-card"
+            onChange={(iso) => {
+              const parts = isoDateParts(iso);
+              if (!parts) return;
+              setViewYear(parts.year);
+              setViewMonth(parts.month);
+            }}
+          >
+            {monthLabel}
+            <span className="text-[10px] leading-none font-semibold opacity-50" aria-hidden="true">
+              ▾
+            </span>
+          </EventDateButton>
           <button
             type="button"
             onClick={nextMonth}
@@ -123,20 +150,6 @@ export function MakeCalendar({ events, clock, onSelect, focusEvent }: MakeCalend
             )
           }
         />
-        {filtered.length === 0 && elsewhere.length > 0 ? (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
-            <p className="text-[13px] text-fg2">
-              이달 표시할 행사가 없습니다. 전체 {dated.length}개 중 {elsewhere.length}개는 다른 달에 있습니다.
-            </p>
-            <button
-              type="button"
-              onClick={goToEvents}
-              className="shrink-0 cursor-pointer rounded-lg bg-accent px-3 py-1.5 text-[12px] font-semibold text-white"
-            >
-              행사 달로 이동
-            </button>
-          </div>
-        ) : null}
       </div>
 
       <div className="px-6 pb-6">

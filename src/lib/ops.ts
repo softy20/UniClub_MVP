@@ -2,6 +2,7 @@ import { buildCalendarEvents } from "./calendar";
 import { dayDiff } from "./board";
 import type { ClubData } from "./types";
 
+// 업무 종류 카테고리 버튼 템플릿
 export const CAT_PALETTE = [
   { color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
   { color: "#E8492C", bg: "rgba(232,73,44,0.15)" },
@@ -10,6 +11,8 @@ export const CAT_PALETTE = [
   { color: "#6A4FE0", bg: "rgba(106,79,224,0.15)" },
   { color: "#8E24AA", bg: "rgba(142,36,170,0.15)" },
   { color: "#D81B7A", bg: "rgba(216,27,122,0.15)" },
+  { color: "#1BD87A", bg: "rgba(27, 216, 134, 0.15)" },
+  { color: "#67AA24", bg: "rgba(66, 173, 37, 0.15)" },
 ] as const;
 
 export type CategoryStyle = { label: string; color: string; bg: string };
@@ -18,10 +21,12 @@ function paletteIndex(text: string): number {
   if (/MT|엠티|수련회|워크숍|워크샵/i.test(text)) return 6;
   if (/봉사/.test(text)) return 5;
   if (/회의|총회|세미나|스크럼|정기회의/.test(text)) return 4;
-  if (/회식|친목|뒤풀이|네트워킹/.test(text)) return 3;
-  if (/모집|면접|부스|OT|오리엔테이션/.test(text)) return 2;
-  if (/투어|해양|현장|답사/.test(text)) return 2;
-  if (/공연|해커톤|대회|프로젝트|발표|교육|스터디/.test(text)) return 0;
+  if (/회식|친목|뒤풀이|네트워킹|정기행사/.test(text)) return 3;
+  if (/모집|면접|OT|오리엔테이션/.test(text)) return 2;
+  if (/부스/.test(text)) return 1;
+  if (/투어|해양|현장|답사/.test(text)) return 7;
+  if (/공연|해커톤|대회|프로젝트|발표|교육|스터디|선물/.test(text)) return 0;
+  if (/정기활동/.test(text)) return 8;
   let hash = 0;
   for (let i = 0; i < text.length; i += 1) hash = text.charCodeAt(i) + ((hash << 5) - hash);
   return Math.abs(hash) % CAT_PALETTE.length;
