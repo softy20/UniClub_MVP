@@ -15,7 +15,11 @@ import type { ClubData } from "./lib/types";
 
 const seed = club as ClubData;
 
-export default function App() {
+type AppProps = {
+  onSignOut: () => void;
+};
+
+export default function App({ onSignOut }: AppProps) {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
   const { data, applyClubData, patchEvent } = useClubData(seed);
@@ -100,6 +104,13 @@ export default function App() {
               <span className="tabular text-[13px] font-semibold text-fg3">
                 오늘 {clock.month}월 {clock.day}일
               </span>
+            </button>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="flex h-[29px] cursor-pointer items-center rounded-md bg-card px-2.5 text-[13px] font-semibold text-fg3 transition-colors duration-150 hover:bg-card2"
+            >
+              로그아웃
             </button>
           </div>
         </header>
