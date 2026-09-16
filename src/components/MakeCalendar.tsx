@@ -1,21 +1,67 @@
-import { useState } from "react";
-import { ALL_CATS, CATS, type FigmaCat, type OpsEvent } from "../lib/ops";
+import { useEffect, useMemo, useState } from "react";
+import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 import { monthCells } from "../lib/calendar";
 import type { KstClock } from "../lib/kst";
+import { EventDateButton, isoDateParts } from "./EventEditors";
 import { CategoryFilter } from "./marks";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+function isDated(event: OpsEvent): boolean {
+  return Number.isFinite(event.date.getTime());
+}
+
+function focusMonth(events: OpsEvent[], clock: KstClock): { year: number; month: number } {
+  const dated = events.filter(isDated);
+  const upcoming = dated.filter((event) => event.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft)[0];
+  const pick = upcoming ?? dated[0];
+  if (!pick) return { year: clock.year, month: clock.month };
+  return { year: pick.date.getFullYear(), month: pick.date.getMonth() + 1 };
+}
 
 type MakeCalendarProps = {
   events: OpsEvent[];
   clock: KstClock;
   onSelect: (event: OpsEvent) => void;
+  focusEvent?: OpsEvent | null;
+  focusToday?: boolean;
+  onTodayFocused?: () => void;
 };
 
-export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
-  const [viewYear, setViewYear] = useState(clock.year);
-  const [viewMonth, setViewMonth] = useState(clock.month);
-  const [active, setActive] = useState<Set<FigmaCat>>(new Set(ALL_CATS));
+export function MakeCalendar({
+  events,
+  clock,
+  onSelect,
+  focusEvent,
+  focusToday = false,
+  onTodayFocused,
+}: MakeCalendarProps) {
+  const initial = focusToday
+    ? { year: clock.year, month: clock.month }
+    : focusMonth(events, clock);
+  const [viewYear, setViewYear] = useState(initial.year);
+  const [viewMonth, setViewMonth] = useState(initial.month);
+  const categories = useMemo(() => uniqueCategoryLabels(events), [events]);
+  const [active, setActive] = useState<Set<string>>(() => new Set(categories));
+  const categoryKey = categories.join("|");
+  const focusTime = focusEvent?.date.getTime();
+
+  useEffect(() => {
+    setActive(new Set(categories));
+  }, [categoryKey]);
+
+  useEffect(() => {
+    if (!focusEvent || !Number.isFinite(focusEvent.date.getTime())) return;
+    setViewYear(focusEvent.date.getFullYear());
+    setViewMonth(focusEvent.date.getMonth() + 1);
+  }, [focusEvent?.id, focusTime]);
+
+  useEffect(() => {
+    if (!focusToday) return;
+    setViewYear(clock.year);
+    setViewMonth(clock.month);
+    onTodayFocused?.();
+  }, [focusToday, clock.year, clock.month, onTodayFocused]);
 
   function prevMonth() {
     if (viewMonth === 1) {
@@ -37,7 +83,8 @@ export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
 
   const cells = monthCells(viewYear, viewMonth - 1);
   const monthLabel = viewYear === clock.year ? `${viewMonth}월` : `${viewYear}년 ${viewMonth}월`;
-  const filtered = events.filter(
+  const dated = events.filter(isDated);
+  const filtered = dated.filter(
     (event) =>
       active.has(event.category) &&
       event.date.getFullYear() === viewYear &&
@@ -55,9 +102,26 @@ export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
           >
             ‹
           </button>
-          <div className="w-[130px] text-center">
-            <span className="text-[22px] font-bold text-fg">{monthLabel}</span>
-          </div>
+          <EventDateButton
+            value={`${viewYear}-${String(viewMonth).padStart(2, "0")}-01`}
+            today={clock.civil}
+            defaultMonth={viewMonth}
+            align="center"
+            showSelected={false}
+            ariaLabel={`${monthLabel} 점프`}
+            triggerClassName="inline-flex min-w-[130px] cursor-pointer items-center justify-center gap-1 rounded-lg px-2 py-1 text-[22px] font-bold text-fg transition-colors duration-150 hover:bg-card"
+            onChange={(iso) => {
+              const parts = isoDateParts(iso);
+              if (!parts) return;
+              setViewYear(parts.year);
+              setViewMonth(parts.month);
+            }}
+          >
+            {monthLabel}
+            <span className="text-[10px] leading-none font-semibold opacity-50" aria-hidden="true">
+              ▾
+            </span>
+          </EventDateButton>
           <button
             type="button"
             onClick={nextMonth}
@@ -70,6 +134,7 @@ export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
 
       <div className="bg-bg px-6 pb-4">
         <CategoryFilter
+          events={events}
           active={active}
           onToggle={(cat) => {
             setActive((prev) => {
@@ -80,7 +145,9 @@ export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
             });
           }}
           onToggleAll={() =>
-            setActive((prev) => (prev.size === ALL_CATS.length ? new Set() : new Set(ALL_CATS)))
+            setActive((prev) =>
+              categories.every((cat) => prev.has(cat)) ? new Set() : new Set(categories),
+            )
           }
         />
       </div>
@@ -135,19 +202,22 @@ export function MakeCalendar({ events, clock, onSelect }: MakeCalendarProps) {
                         {day}
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        {dayEvents.slice(0, 3).map((event) => (
+                        {dayEvents.slice(0, 3).map((event) => {
+                          const cat = categoryStyle(event.category);
+                          return (
                           <button
                             key={event.id}
                             type="button"
                             onClick={() => onSelect(event)}
                             className="w-full cursor-pointer rounded px-1.5 py-0.5 text-left hover:opacity-80"
-                            style={{ background: CATS[event.category].bg }}
+                            style={{ background: cat.bg }}
                           >
-                            <p className="truncate text-[11px] font-medium leading-tight" style={{ color: CATS[event.category].color }}>
+                            <p className="truncate text-[11px] font-medium leading-tight" style={{ color: cat.color }}>
                               {event.title}
                             </p>
                           </button>
-                        ))}
+                          );
+                        })}
                         {dayEvents.length > 3 ? (
                           <p className="pl-1 text-[10px] text-fg3">+{dayEvents.length - 3}</p>
                         ) : null}

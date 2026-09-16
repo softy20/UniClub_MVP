@@ -1,5 +1,5 @@
 import { CalendarBlank, CheckSquare, Lightning, SquaresFour } from "@phosphor-icons/react";
-import { CATS, type FigmaCat, type OpsEvent } from "../lib/ops";
+import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 
 export type AppPage = "dashboard" | "calendar" | "tasks" | "manual";
 
@@ -24,7 +24,7 @@ export function Sidebar({ current, onNavigate, events, clubName, overallPct }: S
       acc[event.category] = (acc[event.category] ?? 0) + 1;
       return acc;
     },
-    {} as Partial<Record<FigmaCat, number>>,
+    {} as Record<string, number>,
   );
 
   return (
@@ -82,12 +82,12 @@ export function Sidebar({ current, onNavigate, events, clubName, overallPct }: S
         <div className="mt-6">
           <p className="mb-2 px-2 text-[12px] tracking-widest text-fg3 uppercase">카테고리</p>
           <div className="flex flex-col gap-0.5">
-            {(Object.entries(CATS) as [string, (typeof CATS)[FigmaCat]][]).map(([key, item]) => {
-              const cat = Number(key) as FigmaCat;
+            {uniqueCategoryLabels(events).map((cat) => {
+              const item = categoryStyle(cat);
               const count = counts[cat] ?? 0;
               if (count === 0) return null;
               return (
-                <div key={key} className="flex items-center gap-2 px-3 py-1.5">
+                <div key={cat} className="flex items-center gap-2 px-3 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="font-display flex-1 text-xs text-fg3">{item.label}</span>
                   <span className="text-[12px] text-fg3">{count}</span>

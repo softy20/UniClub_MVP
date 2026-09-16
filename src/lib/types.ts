@@ -1,3 +1,5 @@
+export type TaskSource = "extracted" | "inferred";
+
 export type ClubTask = {
   task_id?: string;
   task_name: string;
@@ -6,7 +8,31 @@ export type ClubTask = {
   is_mandatory: boolean;
   action_details?: string;
   checklist?: string[];
+  source?: TaskSource;
 };
+
+export function isInferredTask(task: ClubTask): boolean {
+  return task.source === "inferred" || Boolean(task.task_id?.includes("_inferred_"));
+}
+
+export const CLUB_GENRES = [
+  { id: "performance", label: "공연" },
+  { id: "sports", label: "스포츠" },
+  { id: "academic", label: "학술" },
+  { id: "volunteer", label: "봉사" },
+  { id: "social", label: "취미·친목" },
+  { id: "other", label: "기타" },
+] as const;
+
+export type ClubGenre = (typeof CLUB_GENRES)[number]["id"];
+
+export function isClubGenre(value: unknown): value is ClubGenre {
+  return typeof value === "string" && CLUB_GENRES.some((genre) => genre.id === value);
+}
+
+export function clubGenreLabel(genre: ClubGenre): string {
+  return CLUB_GENRES.find((item) => item.id === genre)?.label ?? "기타";
+}
 
 export type ClubEvent = {
   event_id: string;
@@ -71,15 +97,22 @@ export type RoleDefinition = {
   description?: string;
 };
 
+export type CategoryDefinition = {
+  label: string;
+  aliases: string[];
+};
+
 export type ClubProfile = {
   club_name: string;
   academic_year: number;
   roles: RoleDefinition[];
   default_role: string;
+  categories: CategoryDefinition[];
+  default_category: string;
   locked: boolean;
 };
 
-export type OnboardingQuestionCategory = "roles" | "aliases" | "club_name";
+export type OnboardingQuestionCategory = "roles" | "aliases" | "club_name" | "event_categories";
 
 export type QuestionOption = {
   id: string;

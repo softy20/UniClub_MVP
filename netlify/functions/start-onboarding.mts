@@ -2,16 +2,21 @@ import { createAnthropic, firstToolUse, MODEL_ID } from "./_shared/ai.ts";
 import { errorResponse, json, readJsonBody } from "./_shared/http.ts";
 import {
   buildManualUserContent,
+  excerptForOnboarding,
   hasManualContent,
   resolveManualInput,
+  withManualText,
   type ResolvedManual,
 } from "./_shared/manual-file.ts";
 import { buildStartSystem, isDraftRolesPayload, proposeClubRolesTool } from "./_shared/onboarding.ts";
 import {
   currentAcademicYear,
+  ensureDraftCategories,
   ensureDraftRoles,
+  normalizeCategory,
   normalizeQuestions,
   normalizeRole,
+  withCategoriesQuestion,
   withClubNameQuestion,
   withEmptyRolesQuestion,
 } from "./_shared/schema.ts";
@@ -57,8 +62,8 @@ export default async (req: Request) => {
         {
           role: "user",
           content: buildManualUserContent(
-            `현재 학년도는 ${currentYear}년이다. 다음 매뉴얼에서 부서 초안과 선택지 버튼이 있는 확인 질문 1~2개를 추출하라.`,
-            resolved,
+            `현재 학년도는 ${currentYear}년이다. 다음 매뉴얼에서 부서 초안, 행사 분류 초안, 선택지 버튼이 있는 확인 질문 1~2개를 추출하라.`,
+            withManualText(resolved, excerptForOnboarding(resolved.text)),
           ),
         },
       ],
@@ -71,9 +76,15 @@ export default async (req: Request) => {
 
     const clubName = tool.input.club_name.trim() || "동아리";
     const draftRoles = ensureDraftRoles(tool.input.draft_roles.map(normalizeRole));
-    const questions = withEmptyRolesQuestion(
-      draftRoles,
-      withClubNameQuestion(clubName, normalizeQuestions(tool.input.questions)),
+    const draftCategories = ensureDraftCategories(
+      (tool.input.draft_categories ?? []).map(normalizeCategory),
+    );
+    const questions = withCategoriesQuestion(
+      draftCategories,
+      withEmptyRolesQuestion(
+        draftRoles,
+        withClubNameQuestion(clubName, normalizeQuestions(tool.input.questions)),
+      ),
     );
     if (questions.length === 0) {
       return errorResponse("Model did not return clarifying questions", 500);
@@ -84,6 +95,7 @@ export default async (req: Request) => {
       club_name: clubName,
       academic_year: currentYear,
       draft_roles: draftRoles,
+      draft_categories: draftCategories,
       questions,
       assistant_message: tool.input.message.trim(),
       text: resolved.text,
