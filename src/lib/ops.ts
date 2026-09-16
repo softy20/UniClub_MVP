@@ -1,52 +1,108 @@
-import { buildCalendarEvents, type LegendId } from "./calendar";
+import { buildCalendarEvents } from "./calendar";
 import { dayDiff } from "./board";
 import type { ClubData } from "./types";
 
-export type FigmaCat = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+// 업무 종류 카테고리 버튼 템플릿
+export const CAT_PALETTE = [
+  { color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
+  { color: "#E8492C", bg: "rgba(232,73,44,0.15)" },
+  { color: "#00838F", bg: "rgba(0,131,143,0.15)" },
+  { color: "#5BA8D4", bg: "rgba(91,168,212,0.15)" },
+  { color: "#6A4FE0", bg: "rgba(106,79,224,0.15)" },
+  { color: "#8E24AA", bg: "rgba(142,36,170,0.15)" },
+  { color: "#D81B7A", bg: "rgba(216,27,122,0.15)" },
+  { color: "#1BD87A", bg: "rgba(27, 216, 134, 0.15)" },
+  { color: "#67AA24", bg: "rgba(66, 173, 37, 0.15)" },
+] as const;
 
-export const CATS: Record<FigmaCat, { label: string; color: string; bg: string }> = {
-  1: { label: "OW", color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
-  2: { label: "AOW", color: "#E8492C", bg: "rgba(232,73,44,0.15)" },
-  3: { label: "해양", color: "#00838F", bg: "rgba(0,131,143,0.15)" },
-  4: { label: "회식", color: "#5BA8D4", bg: "rgba(91,168,212,0.15)" },
-  5: { label: "회의", color: "#6A4FE0", bg: "rgba(106,79,224,0.15)" },
-  6: { label: "봉사", color: "#8E24AA", bg: "rgba(142,36,170,0.15)" },
-  7: { label: "MT", color: "#D81B7A", bg: "rgba(216,27,122,0.15)" },
-};
+export type CategoryStyle = { label: string; color: string; bg: string };
 
-const KIND_TO_CAT: Record<LegendId, FigmaCat> = {
-  ow: 1,
-  aow: 2,
-  marine: 3,
-  social: 4,
-  officer: 5,
-  booth: 6,
-  mt: 7,
-};
+function paletteIndex(text: string): number {
+  if (/MT|엠티|수련회|워크숍|워크샵/i.test(text)) return 6;
+  if (/봉사/.test(text)) return 5;
+  if (/회의|총회|세미나|스크럼|정기회의/.test(text)) return 4;
+  if (/회식|친목|뒤풀이|네트워킹|정기행사/.test(text)) return 3;
+  if (/모집|면접|OT|오리엔테이션/.test(text)) return 2;
+  if (/부스/.test(text)) return 1;
+  if (/투어|해양|현장|답사/.test(text)) return 7;
+  if (/공연|해커톤|대회|프로젝트|발표|교육|스터디|선물/.test(text)) return 0;
+  if (/정기활동/.test(text)) return 8;
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  return Math.abs(hash) % CAT_PALETTE.length;
+}
+
+export function categoryStyle(label: string): CategoryStyle {
+  const name = label.trim() || "기타";
+  const pal = CAT_PALETTE[paletteIndex(name)];
+  return { label: name, color: pal.color, bg: pal.bg };
+}
+
+export function uniqueCategoryLabels(events: { category: string }[]): string[] {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const event of events) {
+    const name = event.category.trim() || "기타";
+    if (seen.has(name)) continue;
+    seen.add(name);
+    labels.push(name);
+  }
+  return labels;
+}
 
 export type OpsCheck = {
   id: string;
   text: string;
   done: boolean;
   daysBefore: number;
+  role: string;
 };
 
 export type OpsEvent = {
   id: string;
   title: string;
   date: Date;
-  category: FigmaCat;
+  category: string;
   dday: string;
   daysLeft: number;
   location: string;
   memo: string;
   checklist: OpsCheck[];
+  editable: boolean;
 };
+
+const COMMON_ROLE = "공통";
+
+export function groupByRole<T>(
+  items: T[],
+  roster: string[],
+  roleOf: (item: T) => string,
+): { role: string; items: T[] }[] {
+  const buckets = new Map<string, T[]>();
+  for (const item of items) {
+    const role = roleOf(item).trim() || COMMON_ROLE;
+    const list = buckets.get(role);
+    if (list) list.push(item);
+    else buckets.set(role, [item]);
+  }
+  const order = [...roster];
+  for (const role of buckets.keys()) {
+    if (!order.includes(role)) order.push(role);
+  }
+  return order.filter((role) => buckets.has(role)).map((role) => ({ role, items: buckets.get(role)! }));
+}
 
 export function formatDday(daysLeft: number): string {
   if (daysLeft > 0) return `D-${daysLeft}`;
   if (daysLeft === 0) return "D-0";
   return `D+${-daysLeft}`;
+}
+
+function eventCategoryLabel(sourceCategory: string | undefined, eventId: string): string {
+  const fromSource = sourceCategory?.trim();
+  if (fromSource) return fromSource;
+  if (eventId.startsWith("gift-")) return "선물";
+  return "기타";
 }
 
 export function buildOpsEvents(data: ClubData, today: Date, done: Set<string>): OpsEvent[] {
@@ -63,6 +119,7 @@ export function buildOpsEvents(data: ClubData, today: Date, done: Set<string>): 
         text: task.task_name,
         done: done.has(id),
         daysBefore: task.days_before_dday,
+        role: task.assigned_role.trim() || "공통",
       };
     });
 
@@ -70,14 +127,13 @@ export function buildOpsEvents(data: ClubData, today: Date, done: Set<string>): 
       id: item.id,
       title: item.name,
       date: item.date,
-      category: KIND_TO_CAT[item.kinds[0] ?? "social"],
+      category: eventCategoryLabel(source?.category, item.id),
       dday: formatDday(daysLeft),
       daysLeft,
       location: source?.location ?? "",
       memo: item.details,
       checklist,
+      editable: Boolean(source),
     };
   });
 }
-
-export const ALL_CATS = Object.keys(CATS).map(Number) as FigmaCat[];

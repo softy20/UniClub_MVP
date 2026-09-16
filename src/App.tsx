@@ -7,19 +7,25 @@ import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
+import { loadClubData, patchClubEvent, saveClubData, type ClubEventPatch } from "./lib/club-store";
 import { useKstNow } from "./lib/kst";
-import { buildOpsEvents } from "./lib/ops";
+import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
 import type { ClubData } from "./lib/types";
 
-const data = club as ClubData;
+const seed = club as ClubData;
 
 export default function App() {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
+  const [data, setData] = useState<ClubData>(() => loadClubData(seed));
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [goToday, setGoToday] = useState(false);
 
-  const events = useMemo(() => buildOpsEvents(data, clock.civil, done), [clock.year, clock.month, clock.day, done]);
+  const events = useMemo(
+    () => buildOpsEvents(data, clock.civil, done),
+    [data, clock.year, clock.month, clock.day, done],
+  );
   const selected = events.find((event) => event.id === selectedId) ?? null;
   const totalTasks = events.reduce((sum, event) => sum + event.checklist.length, 0);
   const totalDone = events.reduce((sum, event) => sum + event.checklist.filter((item) => item.done).length, 0);
@@ -38,6 +44,47 @@ export default function App() {
   function go(next: AppPage) {
     setPage(next);
     setSelectedId(null);
+  }
+
+  function goTodayCalendar() {
+    setSelectedId(null);
+    setPage("calendar");
+    setGoToday(true);
+  }
+
+  function persist(next: ClubData) {
+    try {
+      saveClubData(next);
+    } catch (error) {
+      console.error("클럽 데이터 저장 실패", error);
+    }
+    setData(next);
+  }
+
+  function applyClubData(next: ClubData) {
+    persist(next);
+    go("calendar");
+  }
+
+  function patchEvent(eventId: string, patch: ClubEventPatch) {
+    if (patch.task?.remove) {
+      setDone((prev) => {
+        if (!prev.has(patch.task!.id)) return prev;
+        const next = new Set(prev);
+        next.delete(patch.task!.id);
+        saveDoneIds(next);
+        return next;
+      });
+    }
+    setData((prev) => {
+      const next = patchClubEvent(prev, eventId, patch);
+      try {
+        saveClubData(next);
+      } catch (error) {
+        console.error("클럽 데이터 저장 실패", error);
+      }
+      return next;
+    });
   }
 
   return (
@@ -59,12 +106,17 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex h-[29px] items-center gap-1.5 rounded-md bg-card px-2.5">
+            <button
+              type="button"
+              onClick={goTodayCalendar}
+              aria-label="오늘이 있는 달력으로 이동"
+              className="flex h-[29px] cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 transition-colors duration-150 hover:bg-card2"
+            >
               <span className="pulse-dot size-[7px] shrink-0 rounded-full bg-green-500" />
               <span className="tabular text-[13px] font-semibold text-fg3">
                 오늘 {clock.month}월 {clock.day}일
               </span>
-            </div>
+            </button>
           </div>
         </header>
 
@@ -77,10 +129,25 @@ export default function App() {
             />
           ) : null}
           {page === "calendar" ? (
-            <MakeCalendar events={events} clock={clock} onSelect={(event) => setSelectedId(event.id)} />
+            <MakeCalendar
+              key={`${data.club_info.club_name}-${data.club_info.academic_year}-${data.events.length}`}
+              events={events}
+              clock={clock}
+              focusEvent={selected}
+              focusToday={goToday}
+              onTodayFocused={() => setGoToday(false)}
+              onSelect={(event) => setSelectedId(event.id)}
+            />
           ) : null}
-          {page === "tasks" ? <TasksPage events={events} onToggle={toggle} /> : null}
-          {page === "manual" ? <AiParsePage /> : null}
+          {page === "tasks" ? (
+            <TasksPage
+              events={events}
+              roster={data.club_info.roles.map((role) => role.role_name)}
+              onToggle={toggle}
+              onPatch={patchEvent}
+            />
+          ) : null}
+          {page === "manual" ? <AiParsePage onApply={applyClubData} /> : null}
         </div>
       </main>
 
@@ -92,7 +159,15 @@ export default function App() {
             aria-label="패널 닫기"
             onClick={() => setSelectedId(null)}
           />
-          <EventPanel event={selected} onClose={() => setSelectedId(null)} onToggle={toggle} />
+          <EventPanel
+            event={selected}
+            today={clock.civil}
+            roster={data.club_info.roles.map((role) => role.role_name)}
+            categories={uniqueCategoryLabels(data.events)}
+            onClose={() => setSelectedId(null)}
+            onToggle={toggle}
+            onPatch={patchEvent}
+          />
         </>
       ) : null}
     </div>
