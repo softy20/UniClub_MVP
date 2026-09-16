@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.124.0",
     "@netlify/blobs": "^10.7.13",
     "@phosphor-icons/react": "^2.1.10",
+    "@supabase/supabase-js": "^2.116.0",
     "mammoth": "^1.12.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
