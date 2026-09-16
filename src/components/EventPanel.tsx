@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PencilSimple, X } from "@phosphor-icons/react";
 import { toDateInputValue } from "../lib/board";
 import type { ClubEventPatch } from "../lib/club-store";
-import { groupByRole, type OpsEvent } from "../lib/ops";
+import type { OpsEvent } from "../lib/ops";
 import { EventCategoryButton, EventDateButton } from "./EventEditors";
-import { DdayBadge, RoleChip, Tag } from "./marks";
+import { DdayBadge, Tag } from "./marks";
+import { RoleTodoGroups } from "./RoleTodoGroups";
 
 type EventPanelProps = {
   event: OpsEvent;
@@ -38,9 +39,16 @@ export function EventPanel({
     () => [...new Set([...categories, event.category, "기타"].map((item) => item.trim()).filter(Boolean))],
     [categories, event.category],
   );
-  const roleGroups = useMemo(
-    () => groupByRole(event.checklist, roster, (item) => item.role),
-    [event.checklist, roster],
+  const todoItems = useMemo(
+    () =>
+      [...event.checklist]
+        .sort((a, b) => a.daysBefore - b.daysBefore)
+        .map((item) => ({
+          ...item,
+          eventId: event.id,
+          editable: event.editable,
+        })),
+    [event.checklist, event.editable, event.id],
   );
 
   useEffect(() => {
@@ -180,48 +188,18 @@ export function EventPanel({
 
       <div className="flex-1 overflow-y-auto p-5">
         {tab === "checklist" ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-[12px] tracking-widest text-fg3 uppercase">부서별 TO-DO</p>
-            {event.checklist.length === 0 ? (
-              <p className="text-sm text-fg3">이 행사에 적힌 할 일이 없습니다.</p>
-            ) : (
-              roleGroups.map((group) => {
-                const groupDone = group.items.filter((item) => item.done).length;
-                return (
-                  <section key={group.role}>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <RoleChip name={group.role} roster={roster} />
-                      <span className="tabular text-[11px] text-fg3">
-                        {groupDone}/{group.items.length}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {group.items.map((item) => (
-                        <label
-                          key={item.id}
-                          className="flex cursor-pointer items-start gap-3 rounded-lg p-3"
-                          style={{ background: item.done ? "rgba(34,197,94,0.06)" : "var(--card2)" }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={item.done}
-                            onChange={() => onToggle(item.id)}
-                            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-indigo-500"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span className={`text-sm text-fg ${item.done ? "line-through opacity-40" : ""}`}>
-                              {item.text}
-                            </span>
-                            <p className="mt-0.5 text-[12px] text-fg3">D-Day {item.daysBefore}일 전</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })
-            )}
-          </div>
+          <RoleTodoGroups
+            heading="부서별 TO-DO"
+            items={todoItems}
+            roster={roster}
+            variant="panel"
+            canEdit={event.editable}
+            resetKey={event.id}
+            defaultEventId={event.id}
+            emptyText="이 행사에 적힌 할 일이 없습니다."
+            onToggle={onToggle}
+            onPatch={onPatch}
+          />
         ) : (
           <div>
             <p className="mb-3 text-[12px] tracking-widest text-fg3 uppercase">운영 메모</p>

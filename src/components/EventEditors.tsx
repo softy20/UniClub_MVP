@@ -1,5 +1,5 @@
 import { CalendarBlank } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { dayDiff } from "../lib/board";
 import { monthCells, WEEKDAYS } from "../lib/calendar";
@@ -114,13 +114,23 @@ export function EventDateButton({
   today,
   defaultMonth,
   onChange,
+  ariaLabel = "D-Day 날짜",
+  align = "end",
+  showSelected = true,
+  triggerClassName,
+  children,
 }: {
   value: string;
   today: Date;
   defaultMonth?: number;
   onChange: (iso: string) => void;
+  ariaLabel?: string;
+  align?: "start" | "center" | "end";
+  showSelected?: boolean;
+  triggerClassName?: string;
+  children?: ReactNode;
 }) {
-  const picked = Boolean(isoDateParts(value));
+  const picked = showSelected && Boolean(isoDateParts(value));
   const pickedDate = picked ? dateFromIso(value) : null;
   const wrapRef = useRef<HTMLDivElement>(null);
   const jumpOpenRef = useRef(false);
@@ -168,7 +178,13 @@ export function EventDateButton({
     if (rect) {
       const width = 256;
       const height = 292;
-      const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+      const rawLeft =
+        align === "start"
+          ? rect.left
+          : align === "center"
+            ? rect.left + rect.width / 2 - width / 2
+            : rect.right - width;
+      const left = Math.min(Math.max(8, rawLeft), window.innerWidth - width - 8);
       const top =
         rect.bottom + 4 + height > window.innerHeight - 8
           ? Math.max(8, rect.top - height - 4)
@@ -208,7 +224,7 @@ export function EventDateButton({
     <div ref={wrapRef} className="relative" data-date-picker="">
       <button
         type="button"
-        aria-label="D-Day 날짜"
+        aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => {
@@ -217,15 +233,26 @@ export function EventDateButton({
             setJumpOpen(false);
           } else placeAndOpen();
         }}
-        className="inline-flex cursor-pointer items-center gap-[5px] rounded-lg border px-2.5 py-[5px] text-[12px] font-semibold whitespace-nowrap transition-[border-color,background-color,color] duration-150"
-        style={{
-          borderColor: picked ? "var(--accent)" : "var(--border)",
-          background: picked ? "rgba(0,102,255,0.06)" : "var(--bg)",
-          color: picked ? "var(--accent)" : "var(--fg3)",
-        }}
+        className={
+          triggerClassName ??
+          "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border px-2.5 py-[5px] text-[12px] font-semibold whitespace-nowrap transition-[border-color,background-color,color] duration-150"
+        }
+        style={
+          children
+            ? undefined
+            : {
+                borderColor: picked ? "var(--accent)" : "var(--border)",
+                background: picked ? "rgba(0,102,255,0.06)" : "var(--bg)",
+                color: picked ? "var(--accent)" : "var(--fg3)",
+              }
+        }
       >
-        <CalendarBlank size={12} weight="bold" aria-hidden="true" />
-        {picked ? formatPickedDateLabel(value, today) : "D-Day 날짜"}
+        {children ?? (
+          <>
+            <CalendarBlank size={12} weight="bold" aria-hidden="true" />
+            {picked ? formatPickedDateLabel(value, today) : "D-Day 날짜"}
+          </>
+        )}
       </button>
       {open
         ? createPortal(

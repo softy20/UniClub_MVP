@@ -20,6 +20,7 @@ export default function App() {
   const [data, setData] = useState<ClubData>(() => loadClubData(seed));
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [goToday, setGoToday] = useState(false);
 
   const events = useMemo(
     () => buildOpsEvents(data, clock.civil, done),
@@ -45,6 +46,12 @@ export default function App() {
     setSelectedId(null);
   }
 
+  function goTodayCalendar() {
+    setSelectedId(null);
+    setPage("calendar");
+    setGoToday(true);
+  }
+
   function persist(next: ClubData) {
     try {
       saveClubData(next);
@@ -60,6 +67,15 @@ export default function App() {
   }
 
   function patchEvent(eventId: string, patch: ClubEventPatch) {
+    if (patch.task?.remove) {
+      setDone((prev) => {
+        if (!prev.has(patch.task!.id)) return prev;
+        const next = new Set(prev);
+        next.delete(patch.task!.id);
+        saveDoneIds(next);
+        return next;
+      });
+    }
     setData((prev) => {
       const next = patchClubEvent(prev, eventId, patch);
       try {
@@ -90,12 +106,17 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex h-[29px] items-center gap-1.5 rounded-md bg-card px-2.5">
+            <button
+              type="button"
+              onClick={goTodayCalendar}
+              aria-label="오늘이 있는 달력으로 이동"
+              className="flex h-[29px] cursor-pointer items-center gap-1.5 rounded-md bg-card px-2.5 transition-colors duration-150 hover:bg-card2"
+            >
               <span className="pulse-dot size-[7px] shrink-0 rounded-full bg-green-500" />
               <span className="tabular text-[13px] font-semibold text-fg3">
                 오늘 {clock.month}월 {clock.day}일
               </span>
-            </div>
+            </button>
           </div>
         </header>
 
@@ -113,6 +134,8 @@ export default function App() {
               events={events}
               clock={clock}
               focusEvent={selected}
+              focusToday={goToday}
+              onTodayFocused={() => setGoToday(false)}
               onSelect={(event) => setSelectedId(event.id)}
             />
           ) : null}
@@ -121,6 +144,7 @@ export default function App() {
               events={events}
               roster={data.club_info.roles.map((role) => role.role_name)}
               onToggle={toggle}
+              onPatch={patchEvent}
             />
           ) : null}
           {page === "manual" ? <AiParsePage onApply={applyClubData} /> : null}
