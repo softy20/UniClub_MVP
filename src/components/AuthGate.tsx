@@ -3,15 +3,25 @@ import { useState, type FormEvent } from "react";
 type AuthGateProps = {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
+  onSignInWithGoogle: () => Promise<void>;
 };
 
-export function AuthGate({ onSignIn, onSignUp }: AuthGateProps) {
+export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle }: AuthGateProps) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
+
+  async function handleGoogleClick() {
+    setError(null);
+    try {
+      await onSignInWithGoogle();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "요청에 실패했습니다.");
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -84,6 +94,23 @@ export function AuthGate({ onSignIn, onSignUp }: AuthGateProps) {
             </button>
           </form>
         )}
+
+        {!signupDone ? (
+          <>
+            <div className="mt-4 flex items-center gap-2 text-[12px] text-fg3">
+              <div className="h-px flex-1 bg-border" />
+              또는
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <button
+              type="button"
+              onClick={handleGoogleClick}
+              className="mt-4 w-full cursor-pointer rounded-[10px] border-[1.5px] border-border bg-card py-2.5 text-sm font-medium text-fg"
+            >
+              Google로 로그인
+            </button>
+          </>
+        ) : null}
 
         <button
           type="button"
