@@ -117,6 +117,8 @@ export type BoardTask = {
   eventId: string;
   eventDate: Date;
   dueDate: Date;
+  /** 행사일 며칠 전까지 끝내야 하는지(행사 기준 고정값). 오늘 기준 남은 일수는 dueDate에서 따로 계산한다. */
+  daysBefore: number;
   role: string;
   mandatory: boolean;
   details?: string;

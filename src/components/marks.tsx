@@ -6,7 +6,9 @@
  *
  * 📌 주요 기능:
  * - Tag: 행사 분류(카테고리)를 색깔 있는 알약 모양으로 보여줍니다. 삭제/클릭 기능도 넣을 수 있습니다.
- * - DdayBadge / DminusBadge: 마감일까지 남은 날짜(D-7, D-0, D+3 등)를 색깔로 구분해서 보여줍니다.
+ * - DdayBadge / DminusBadge: 행사 자체의 D-Day(오늘 기준 남은 날짜, D-7/D-0/D+3 등)를 색깔로 보여줍니다.
+ * - TaskDueBadge: 할 일의 마감을 "행사 N일 전"으로 보여줍니다. 행사 D-Day와 숫자가 같아 보여도
+ *   서로 다른 기준(오늘 vs 행사일)이라 혼동되지 않도록 행사 배지와는 다른 문구를 씁니다.
  * - RoleChip: 담당 부서 이름을 색깔 있는 칩으로 보여줍니다. 클릭해서 수정하거나 삭제할 수 있습니다.
  * - RoleSelect: 담당 부서를 바꿀 수 있는 드롭다운 목록을 보여줍니다.
  * - CategoryFilter: 전체 행사 중 원하는 분류만 켜고 끌 수 있는 필터 버튼 묶음입니다.
@@ -20,7 +22,7 @@
  * ```
  *
  * 🎯 주요 관리 요소:
- * - export되는 컴포넌트: Tag, DdayBadge, RoleChip, RoleSelect, DminusBadge, CategoryFilter
+ * - export되는 컴포넌트: Tag, DdayBadge, TaskDueBadge, RoleChip, RoleSelect, DminusBadge, CategoryFilter
  * - export되는 함수/상수: roleAccent(이름별 색상 계산), ROLE_COLORS(부서 색상 목록)
  * - RoleSelect 내부 State: open(드롭다운 열림 여부), anchor(드롭다운 위치 좌표)
  * - 의존성: ../lib/ops(카테고리 스타일, 분류 목록 뽑기), react-dom의 createPortal(드롭다운을
@@ -111,6 +113,21 @@ export function DdayBadge({ dday }: { dday: string }) {
     <span className="inline-flex h-5 items-center gap-[5px] text-[13px] leading-5 font-semibold text-[#888]">
       <span className="size-[7px] shrink-0 rounded-full" style={{ background: dot }} />
       {dday}
+    </span>
+  );
+}
+
+/**
+ * 할 일의 마감을 "행사 N일 전"으로 보여줍니다. daysBefore(행사 기준, 수정 화면과 같은 값)를
+ * 문구로 쓰고, daysLeft(오늘 기준 실제 남은 일수)는 다급함을 알려주는 점 색으로만 씁니다.
+ */
+export function TaskDueBadge({ daysBefore, daysLeft }: { daysBefore: number; daysLeft: number }) {
+  const past = daysLeft < 0;
+  const dot = past ? "#94a3b8" : daysLeft <= 1 ? "#ef4444" : daysLeft <= 7 ? "#eab308" : "#22c55e";
+  return (
+    <span className="inline-flex h-5 items-center gap-[5px] text-[13px] leading-5 font-semibold text-[#888]">
+      <span className="size-[7px] shrink-0 rounded-full" style={{ background: dot }} />
+      행사 {daysBefore}일 전
     </span>
   );
 }

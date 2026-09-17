@@ -8,7 +8,7 @@
  * - 체크박스를 눌러서 할 일을 완료/미완료로 전환
  * - 할 일 이름, 담당 행사, 담당 역할, 마감일을 한 줄로 표시
  * - 줄을 클릭하면 펼쳐져서 상세 설명과 세부 체크리스트를 보여줌
- * - 마감이 얼마 안 남았거나 지난 경우 D-Day 글자 색을 다르게 표시 (지남: 빨강, 임박: 노랑, 그 외: 회색)
+ * - 마감 배지는 "행사 N일 전"(daysBefore)으로 표시하고, 오늘 기준 다급함은 배지 점 색으로만 표시
  * - "필수" 또는 "선택" 여부를 작은 태그로 표시
  *
  * 🔗 사용 예시:
@@ -32,7 +32,8 @@
 import { useState } from "react";
 import { CaretDown, CheckSquare, Square } from "@phosphor-icons/react";
 import type { BoardTask } from "../lib/types";
-import { formatDate, taskDdayLabel } from "../lib/board";
+import { dayDiff, formatDate } from "../lib/board";
+import { TaskDueBadge } from "./marks";
 
 type TaskRowProps = {
   task: BoardTask;
@@ -43,13 +44,7 @@ type TaskRowProps = {
 
 export function TaskRow({ task, done, onToggle, today }: TaskRowProps) {
   const [open, setOpen] = useState(false);
-  const dday = taskDdayLabel(task.dueDate, today);
-  const toneClass =
-    dday.tone === "late"
-      ? "text-red-fg"
-      : dday.tone === "today" || dday.tone === "soon"
-        ? "text-yellow-fg"
-        : "text-muted";
+  const daysLeft = dayDiff(today, task.dueDate);
   return (
     <li className="border-b border-line last:border-b-0">
       <div className="flex items-stretch">
@@ -94,7 +89,7 @@ export function TaskRow({ task, done, onToggle, today }: TaskRowProps) {
         </button>
 
         <div className="flex shrink-0 flex-col items-end justify-center gap-1 py-3.5 pr-4">
-          <span className={`tabular text-[12px] font-medium ${toneClass}`}>{dday.text}</span>
+          <TaskDueBadge daysBefore={task.daysBefore} daysLeft={daysLeft} />
           {task.mandatory ? (
             <span className="rounded-full bg-red-bg px-2 py-0.5 text-[10px] font-medium tracking-[0.05em] text-red-fg">
               필수
