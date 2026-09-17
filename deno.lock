@@ -12,8 +12,10 @@
     "packageJson": {
       "dependencies": [
         "npm:@anthropic-ai/sdk@0.124",
+        "npm:@netlify/blobs@^10.7.13",
         "npm:@netlify/vite-plugin@^2.7.2",
         "npm:@phosphor-icons/react@^2.1.10",
+        "npm:@supabase/supabase-js@^2.116.0",
         "npm:@tailwindcss/vite@^4.1.13",
         "npm:@types/react-dom@^19.1.9",
         "npm:@types/react@^19.1.13",

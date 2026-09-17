@@ -7,17 +7,22 @@ import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
-import { loadClubData, patchClubEvent, saveClubData, type ClubEventPatch } from "./lib/club-store";
+import type { ClubEventPatch } from "./lib/club-store";
 import { useKstNow } from "./lib/kst";
 import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
+import { useClubData } from "./hooks/useClubData";
 import type { ClubData } from "./lib/types";
 
 const seed = club as ClubData;
 
-export default function App() {
+type AppProps = {
+  onSignOut: () => void;
+};
+
+export default function App({ onSignOut }: AppProps) {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
-  const [data, setData] = useState<ClubData>(() => loadClubData(seed));
+  const { data, applyClubData, patchEvent } = useClubData(seed);
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goToday, setGoToday] = useState(false);
@@ -52,21 +57,12 @@ export default function App() {
     setGoToday(true);
   }
 
-  function persist(next: ClubData) {
-    try {
-      saveClubData(next);
-    } catch (error) {
-      console.error("클럽 데이터 저장 실패", error);
-    }
-    setData(next);
-  }
-
-  function applyClubData(next: ClubData) {
-    persist(next);
+  function applyClubDataAndNavigate(next: ClubData) {
+    applyClubData(next);
     go("calendar");
   }
 
-  function patchEvent(eventId: string, patch: ClubEventPatch) {
+  function patchEventAndSync(eventId: string, patch: ClubEventPatch) {
     if (patch.task?.remove) {
       setDone((prev) => {
         if (!prev.has(patch.task!.id)) return prev;
@@ -76,15 +72,7 @@ export default function App() {
         return next;
       });
     }
-    setData((prev) => {
-      const next = patchClubEvent(prev, eventId, patch);
-      try {
-        saveClubData(next);
-      } catch (error) {
-        console.error("클럽 데이터 저장 실패", error);
-      }
-      return next;
-    });
+    patchEvent(eventId, patch);
   }
 
   return (
@@ -117,6 +105,13 @@ export default function App() {
                 오늘 {clock.month}월 {clock.day}일
               </span>
             </button>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="flex h-[29px] cursor-pointer items-center rounded-md bg-card px-2.5 text-[13px] font-semibold text-fg3 transition-colors duration-150 hover:bg-card2"
+            >
+              로그아웃
+            </button>
           </div>
         </header>
 
@@ -144,10 +139,10 @@ export default function App() {
               events={events}
               roster={data.club_info.roles.map((role) => role.role_name)}
               onToggle={toggle}
-              onPatch={patchEvent}
+              onPatch={patchEventAndSync}
             />
           ) : null}
-          {page === "manual" ? <AiParsePage onApply={applyClubData} /> : null}
+          {page === "manual" ? <AiParsePage onApply={applyClubDataAndNavigate} /> : null}
         </div>
       </main>
 
@@ -166,7 +161,7 @@ export default function App() {
             categories={uniqueCategoryLabels(data.events)}
             onClose={() => setSelectedId(null)}
             onToggle={toggle}
-            onPatch={patchEvent}
+            onPatch={patchEventAndSync}
           />
         </>
       ) : null}
