@@ -8,7 +8,7 @@
  * - React 앱을 실제 웹페이지의 div#root 위치에 그려줍니다.
  * - 로그인 상태를 확인하는 동안에는 아무것도 보여주지 않습니다(로딩 처리).
  * - 로그인이 안 되어 있으면 로그인/회원가입 화면(AuthGate)을 보여줍니다.
- * - 로그인이 되어 있으면 메인 화면(App)을 보여줍니다.
+ * - 로그인이 되어 있으면 동아리 선택/생성 화면(ClubGate)을 거쳐 메인 화면(App)을 보여줍니다.
  * - 공통 스타일 파일(index.css)을 불러와 앱 전체에 적용합니다.
  *
  * 🔗 사용 예시:
@@ -33,8 +33,8 @@
  */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import { AuthGate } from "./components/AuthGate";
+import { ClubGate } from "./components/ClubGate";
 import { useAuth } from "./hooks/useAuth";
 import "./index.css";
 
@@ -45,7 +45,7 @@ function Root() {
   if (!session) {
     return <AuthGate onSignIn={signIn} onSignUp={signUp} onSignInWithGoogle={signInWithGoogle} />;
   }
-  return <App onSignOut={signOut} />;
+  return <ClubGate session={session} onSignOut={signOut} />;
 }
 
 createRoot(document.getElementById("root")!).render(

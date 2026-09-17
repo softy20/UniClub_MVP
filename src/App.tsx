@@ -19,7 +19,7 @@
  * 🔗 사용 예시:
  * ```tsx
  * // main.tsx에서 로그인이 확인된 뒤 이렇게 사용합니다
- * <App onSignOut={signOut} />
+ * <App clubId={clubId} clubs={clubs} accessToken={session.access_token} onSwitchClub={...} onCreateClub={...} onCreateInvite={...} onSignOut={signOut} />
  * ```
  *
  * 🎯 주요 관리 요소:
@@ -45,6 +45,7 @@
 import { useEffect, useMemo, useState } from "react";
 import club from "./data/club.json";
 import { AiParsePage } from "./components/AiParsePage";
+import { ClubSwitcher } from "./components/ClubSwitcher";
 import { DashboardPage } from "./components/DashboardPage";
 import { EventPanel } from "./components/EventPanel";
 import { MakeCalendar } from "./components/MakeCalendar";
@@ -56,26 +57,44 @@ import type { ClubEventPatch } from "./lib/club-store";
 import { useKstNow } from "./lib/kst";
 import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
 import { useClubData } from "./hooks/useClubData";
-import type { ClubData } from "./lib/types";
+import type { ClubData, ClubSummary } from "./lib/types";
 
 const seed = club as ClubData;
 
 type AppProps = {
+  clubId: string;
+  clubs: ClubSummary[];
+  accessToken: string;
+  onSwitchClub: (clubId: string) => void;
+  onCreateClub: (name: string) => Promise<string>;
+  onCreateInvite: (clubId: string) => Promise<string>;
   onSignOut: () => void;
 };
 
-export default function App({ onSignOut }: AppProps) {
+export default function App({
+  clubId,
+  clubs,
+  accessToken,
+  onSwitchClub,
+  onCreateClub,
+  onCreateInvite,
+  onSignOut,
+}: AppProps) {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
-  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed);
+  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(
+    seed,
+    clubId,
+    accessToken,
+  );
   const academicYear = data.club_info.academic_year;
-  const [done, setDone] = useState<Set<string>>(() => loadDoneIds(academicYear));
+  const [done, setDone] = useState<Set<string>>(() => loadDoneIds(clubId, academicYear));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goToday, setGoToday] = useState(false);
 
   useEffect(() => {
-    setDone(loadDoneIds(academicYear));
-  }, [academicYear]);
+    setDone(loadDoneIds(clubId, academicYear));
+  }, [clubId, academicYear]);
 
   const events = useMemo(
     () => buildOpsEvents(data, clock.civil, done),
@@ -91,7 +110,7 @@ export default function App({ onSignOut }: AppProps) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      saveDoneIds(academicYear, next);
+      saveDoneIds(clubId, academicYear, next);
       return next;
     });
   }
@@ -118,7 +137,7 @@ export default function App({ onSignOut }: AppProps) {
         if (!prev.has(patch.task!.id)) return prev;
         const next = new Set(prev);
         next.delete(patch.task!.id);
-        saveDoneIds(academicYear, next);
+        saveDoneIds(clubId, academicYear, next);
         return next;
       });
     }
@@ -139,7 +158,14 @@ export default function App({ onSignOut }: AppProps) {
         <header className="flex shrink-0 items-center justify-between border-b border-border bg-bg2 px-6 py-4">
           <div>
             <h1 className="font-display text-lg font-bold text-fg">{PAGE_LABEL[page]}</h1>
-            <div className="mt-0.5">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+              <ClubSwitcher
+                clubs={clubs}
+                activeClubId={clubId}
+                onSwitch={onSwitchClub}
+                onCreateClub={onCreateClub}
+                onCreateInvite={onCreateInvite}
+              />
               <SeasonSwitcher
                 clubName={data.club_info.club_name}
                 activeYear={academicYear}
