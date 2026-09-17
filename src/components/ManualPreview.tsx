@@ -1,3 +1,47 @@
+/**
+ * 🧭 UniClub - ManualPreview (추출된 일정 미리보기 & 편집 화면)
+ *
+ * AI가 매뉴얼에서 뽑아낸 행사와 할 일(TO-DO) 목록을 카드 형태로 보여주고,
+ * 달력에 적용하기 전에 이름, 날짜, 분류, 담당 부서, 할 일을 직접 고쳐볼 수 있는 화면입니다.
+ *
+ * 📌 주요 기능:
+ * - 학기(동계/1학기/하계/2학기/전체) 탭으로 행사를 나눠서 보여줍니다.
+ * - 각 행사 카드에서 이름 수정, 날짜 선택, 분류(카테고리) 변경, 삭제를 할 수 있습니다.
+ * - 행사 안의 할 일들을 부서별로 묶어서 보여주고, 완료 체크, 이름 수정, 삭제, 새 할 일
+ *   추가를 할 수 있습니다.
+ * - AI가 원문에 없던 할 일을 임의로 채워 넣은 경우 "보충됨" 표시를 붙여 알려줍니다.
+ * - 완료율(진행률 바)을 각 행사 카드마다 보여줍니다.
+ * - "달력에 적용" 버튼을 누르면 최종 데이터를 부모 화면으로 넘겨줍니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { ManualPreview } from "./components/ManualPreview";
+ * <ManualPreview
+ *   data={clubData}
+ *   onChange={setClubData}
+ *   onApply={(data) => saveToCalendar(data)}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): data(행사/부서 전체 데이터), categoryOptions(고정된 분류 목록),
+ *   onChange(데이터가 바뀔 때마다 호출), onApply(최종 적용 버튼을 눌렀을 때 호출),
+ *   onBack(이전 단계로 돌아가기), onReset(처음부터 다시 하기)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): term(선택한 학기 탭), done(완료 체크 상태),
+ *   editing(수정 중인 할 일), editingEventId(수정 중인 행사 이름), addingTo(할 일 추가 중인 위치),
+ *   draftText(입력 중인 텍스트), openCatId(열려 있는 분류 선택창), collapsed(접힌 부서 그룹)
+ * - 의존성: ../lib/board(날짜 차이 계산), ../lib/kst(오늘 날짜), ../lib/types(데이터 타입),
+ *   ../lib/ops(부서별 묶기, 분류 목록), ./EventEditors, ./marks, ./RoleTodoGroups
+ *
+ * 💡 팁 및 주의사항:
+ * - 이 컴포넌트는 데이터를 직접 저장하지 않고, 바뀔 때마다 onChange로 부모에게 새 데이터를
+ *   전달하는 방식(부모가 실제 데이터를 들고 있음)으로 동작합니다.
+ * - 행사에 날짜가 없으면 "월"만 기준으로 학기 탭에 배정됩니다.
+ * - 행사를 삭제하면 그 행사에 딸린 할 일의 완료 체크 상태도 함께 정리됩니다.
+ *
+ * @file ManualPreview.tsx
+ * @module components/ManualPreview
+ */
 import { PencilSimple } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { dayDiff } from "../lib/board";

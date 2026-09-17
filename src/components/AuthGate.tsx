@@ -1,3 +1,42 @@
+/**
+ * 🧭 UniClub - AuthGate (로그인/회원가입 화면)
+ *
+ * 앱에 들어오기 전에 보여주는 로그인·회원가입 화면입니다. 이메일/비밀번호로 로그인하거나
+ * 가입하고, 구글 계정으로도 로그인할 수 있습니다.
+ *
+ * 📌 주요 기능:
+ * - 로그인 모드와 회원가입 모드를 버튼 하나로 전환합니다.
+ * - 이메일과 비밀번호를 입력받아 로그인 또는 회원가입을 진행합니다.
+ * - 구글 계정으로 로그인하는 버튼을 제공합니다.
+ * - 회원가입이 끝나면 "확인 이메일을 보냈다"는 안내 문구를 보여줍니다.
+ * - 로그인이나 가입 중 오류가 나면 화면에 오류 메시지를 보여줍니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { AuthGate } from "./components/AuthGate";
+ * <AuthGate
+ *   onSignIn={(email, password) => signIn(email, password)}
+ *   onSignUp={(email, password) => signUp(email, password)}
+ *   onSignInWithGoogle={() => signInWithGoogle()}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): onSignIn(이메일/비밀번호 로그인 함수),
+ *   onSignUp(이메일/비밀번호 회원가입 함수), onSignInWithGoogle(구글 로그인 함수)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): mode(로그인/회원가입 중 어느 모드인지),
+ *   email(입력한 이메일), password(입력한 비밀번호), error(오류 메시지),
+ *   submitting(제출 처리 중인지 여부), signupDone(회원가입 완료 여부)
+ *
+ * 💡 팁 및 주의사항:
+ * - 실제 로그인 로직(서버 통신 등)은 이 컴포넌트 밖(onSignIn 등 Props로 전달된 함수)에서
+ *   처리하고, 이 파일은 화면과 입력값 관리만 담당합니다.
+ * - 비밀번호는 6자 이상이어야 폼 제출이 허용됩니다(HTML minLength 속성으로 검사).
+ * - 모드를 전환하면(로그인 ↔ 회원가입) 이전에 보이던 오류 메시지와 가입 완료 안내가 초기화됩니다.
+ *
+ * @file AuthGate.tsx
+ * @module components/AuthGate
+ */
 import { useState, type FormEvent } from "react";
 
 type AuthGateProps = {
