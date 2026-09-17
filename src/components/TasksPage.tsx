@@ -63,13 +63,15 @@ export function TasksPage({ events, roster, onToggle, onPatch }: TasksPageProps)
       [...events]
         .sort((a, b) => a.daysLeft - b.daysLeft)
         .flatMap((event) =>
-          event.checklist.map((item) => ({
-            ...item,
-            eventId: event.id,
-            eventTitle: event.title,
-            category: event.category,
-            editable: event.editable,
-          })),
+          [...event.checklist]
+            .sort((a, b) => a.daysLeft - b.daysLeft)
+            .map((item) => ({
+              ...item,
+              eventId: event.id,
+              eventTitle: event.title,
+              category: event.category,
+              editable: event.editable,
+            })),
         )
         .filter((task) => active.has(task.category)),
     [events, active],
