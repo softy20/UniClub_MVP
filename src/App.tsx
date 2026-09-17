@@ -12,6 +12,8 @@
  * - 특정 행사를 클릭하면 오른쪽에서 상세 패널(EventPanel)을 열어줍니다.
  * - "오늘" 버튼을 누르면 오늘 날짜가 보이는 달력으로 바로 이동합니다.
  * - 헤더의 SeasonSwitcher로 다른 학년도로 전환하거나, 지금 데이터를 템플릿 삼아 새 학년도를 시작합니다.
+ * - AI 입력(AiParsePage)에 저장된 시즌이 하나라도 있으면 그 데이터를 existingData로 넘겨서,
+ *   재업로드해도 기존 행사를 잃지 않고 안전하게 병합되게 합니다.
  * - 로그아웃 버튼을 누르면 상위(main.tsx)에서 받은 onSignOut 함수를 실행합니다.
  *
  * 🔗 사용 예시:
@@ -196,7 +198,12 @@ export default function App({ onSignOut }: AppProps) {
               onPatch={patchEventAndSync}
             />
           ) : null}
-          {page === "manual" ? <AiParsePage onApply={applyClubDataAndNavigate} /> : null}
+          {page === "manual" ? (
+            <AiParsePage
+              existingData={seasons.length > 0 ? data : null}
+              onApply={applyClubDataAndNavigate}
+            />
+          ) : null}
         </div>
       </main>
 

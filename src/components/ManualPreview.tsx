@@ -568,6 +568,9 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
                                               ) : null}
                                             </span>
                                           )}
+                                          <span className="shrink-0 rounded-md bg-card2 px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-fg3">
+                                            행사 {task.days_before_dday}일 전
+                                          </span>
                                           <TodoItemActions
                                             isEditingName={isEditing}
                                             onSave={saveEdit}

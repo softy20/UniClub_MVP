@@ -10,6 +10,7 @@
  * - 두 이름이 비슷한지, 겹치는 단어가 있는지 판단
  * - 같은 행사로 보이는 두 항목을 하나로 합치기 (이름, 날짜, 장소, 할 일 목록 등)
  * - 여러 그룹의 행사 목록을 합쳐서 중복 없는 최종 행사 목록 만들기
+ * - 이미 저장되어 있는 시즌 데이터에 새로 파싱한 결과를 안전하게 추가하기
  *
  * 🔗 사용 예시:
  * ```ts
@@ -23,17 +24,25 @@
  * - normalizeEventName(name), coreEventName(name): 이름을 비교하기 좋은 형태로 다듬는 함수
  * - tasksSimilar(a, b): 두 할 일 이름이 같은 일인지 판단하는 함수
  * - mergeClubEvents(...groups): 여러 행사 목록을 하나로 합치는 메인 함수
+ * - mergeSeasonEvents(existing, incoming, academicYear, today): 저장된 시즌 행사에 새로
+ *   파싱한 행사를 안전하게 얹는 함수(같은 업로드 안 중복 제거와는 목적이 다름 — 아래 참고)
  *
  * 💡 팁 및 주의사항:
  * - 이 파일의 로직은 문자열 유사도를 규칙(정규식, 접두사 비교 등)으로 판단하는 것이라 100% 정확하지 않을 수 있습니다. 새로운 접미사 패턴이 필요하면 PREP_SUFFIXES, TASK_TAILS 배열에 추가하세요.
  * - mergeClubEvents는 항상 target_month 기준으로 정렬된 새 배열을 반환합니다 (원본 배열은 바꾸지 않음).
  * - isInferredTask(types.ts)에 의존해서, AI가 추측으로 만든 할 일(inferred)과 매뉴얼에서 직접 뽑아낸 할 일(extracted)을 구분해 우선순위를 매깁니다.
+ * - mergeClubEvents/mergePair/pickTask는 "같은 업로드 안에서 AI가 여러 조각으로 나눠 만든
+ *   결과"끼리 합칠 때 쓰는 것이라 "더 알찬 쪽을 통째로 채택"해도 된다(둘 다 아직 저장 전이라
+ *   잃을 게 없음). 반면 mergeSeasonEvents는 "이미 저장되어 화면에 반영된 데이터" 위에 얹는
+ *   것이라 정반대 원칙을 쓴다 — 기존 행사의 이름/날짜/월/장소는 절대 안 바꾸고, 정말 새로
+ *   생긴 행사·할 일만 추가한다. 그래서 mergePair/pickTask를 재사용하지 않고 별도로 구현했다.
  *
  * @file parse-events.ts
  * @module lib/parse-events
  */
 
 import { isInferredTask, type ClubEvent, type ClubTask } from "./types";
+import { dayDiff, estimateEventDate } from "./board";
 
 const PREP_SUFFIXES = [
   "장소예약",
@@ -286,4 +295,45 @@ export function mergeClubEvents(...groups: Array<ClubEvent[] | null | undefined>
   }
 
   return merged.map(dropRedundantInferred).sort((a, b) => a.target_month - b.target_month);
+}
+
+// 기존 할 일은 내용을 절대 바꾸지 않는다 - 이름이 비슷한 게 이미 있으면 무시하고,
+// 정말 새로운 할 일만 뒤에 덧붙인다. 완료 체크(task_id 기반)가 풀리지 않게 하기 위함.
+function mergeExistingWithNewTasks(existingTasks: ClubTask[], incomingTasks: ClubTask[]): ClubTask[] {
+  const newTasks = incomingTasks.filter(
+    (incoming) => !existingTasks.some((existing) => tasksSimilar(existing.task_name, incoming.task_name)),
+  );
+  return [...existingTasks, ...newTasks];
+}
+
+/**
+ * 이미 저장되어 있는 시즌 행사(existingEvents) 위에 새로 파싱한 행사(incomingEvents)를
+ * 안전하게 얹는다. 기존 행사의 이름/날짜/월/장소/카테고리는 절대 바꾸지 않고, 이미 지난
+ * 행사는 할 일도 손대지 않는다. 아직 안 지난 행사는 정말 새로 생긴 할 일만 추가하고,
+ * 완전히 새로운 행사(예: 2학기에 추가된 부스 참여)는 그대로 목록에 더한다.
+ */
+export function mergeSeasonEvents(
+  existingEvents: ClubEvent[],
+  incomingEvents: ClubEvent[],
+  academicYear: number,
+  today: Date,
+): ClubEvent[] {
+  const usedIncoming = new Set<number>();
+
+  const merged = existingEvents.map((existing) => {
+    const matchIndex = incomingEvents.findIndex(
+      (candidate, index) => !usedIncoming.has(index) && isSameEvent(existing, candidate),
+    );
+    if (matchIndex < 0) return existing;
+
+    usedIncoming.add(matchIndex);
+    const isPast = dayDiff(today, estimateEventDate(existing, academicYear)) < 0;
+    if (isPast) return existing;
+
+    const candidate = incomingEvents[matchIndex];
+    return { ...existing, tasks: mergeExistingWithNewTasks(existing.tasks, candidate.tasks) };
+  });
+
+  const newEvents = incomingEvents.filter((_, index) => !usedIncoming.has(index));
+  return [...merged, ...newEvents];
 }
