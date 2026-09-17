@@ -8,9 +8,10 @@
  * - 사이드바 메뉴를 눌러 대시보드/달력/할 일/AI 입력 페이지 사이를 이동합니다.
  * - 동아리 데이터(useClubData)를 불러오고, 수정된 내용을 저장합니다.
  * - 행사와 할 일 목록을 계산해서 각 페이지 컴포넌트에 전달합니다.
- * - 할 일 완료 체크(toggle)와 완료 상태를 브라우저에 저장(saveDoneIds)합니다.
+ * - 할 일 완료 체크(toggle)와 완료 상태를 학년도별로 브라우저에 저장(saveDoneIds)합니다.
  * - 특정 행사를 클릭하면 오른쪽에서 상세 패널(EventPanel)을 열어줍니다.
  * - "오늘" 버튼을 누르면 오늘 날짜가 보이는 달력으로 바로 이동합니다.
+ * - 헤더의 SeasonSwitcher로 다른 학년도로 전환하거나, 지금 데이터를 템플릿 삼아 새 학년도를 시작합니다.
  * - 로그아웃 버튼을 누르면 상위(main.tsx)에서 받은 onSignOut 함수를 실행합니다.
  *
  * 🔗 사용 예시:
@@ -22,10 +23,10 @@
  * 🎯 주요 관리 요소:
  * - Props onSignOut: 로그아웃 버튼을 눌렀을 때 실행할 함수
  * - State page: 지금 보고 있는 페이지 (dashboard/calendar/tasks/manual)
- * - State done: 완료 처리한 할 일 목록
+ * - State done: 완료 처리한 할 일 목록 (지금 학년도 기준, academicYear가 바뀌면 다시 불러옵니다)
  * - State selectedId: 상세 패널로 열어본 행사의 아이디
  * - State goToday: "오늘" 버튼을 눌렀는지 여부 (달력 이동용)
- * - 화면 조합: Sidebar, DashboardPage, MakeCalendar, TasksPage, AiParsePage, EventPanel
+ * - 화면 조합: Sidebar, SeasonSwitcher, DashboardPage, MakeCalendar, TasksPage, AiParsePage, EventPanel
  *
  * 💡 팁 및 주의사항:
  * - events, totalTasks, overallPct 같은 값은 매번 새로 계산하지 않고
@@ -33,17 +34,20 @@
  * - 페이지 이동(go)을 할 때마다 열려 있던 상세 패널은 자동으로 닫힙니다.
  * - 할 일을 삭제하면(patchEventAndSync) 완료 체크 목록에서도 같이 지워줘서
  *   데이터가 서로 어긋나지 않게 합니다.
+ * - academicYear(useClubData가 돌려준 data 기준)가 바뀌면 useEffect가 그 학년도의 완료 체크를
+ *   다시 불러옵니다. 시즌을 전환해도 다른 해의 체크가 섞이지 않게 하기 위해서입니다.
  *
  * @file App.tsx
  * @module App
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import club from "./data/club.json";
 import { AiParsePage } from "./components/AiParsePage";
 import { DashboardPage } from "./components/DashboardPage";
 import { EventPanel } from "./components/EventPanel";
 import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
+import { SeasonSwitcher } from "./components/SeasonSwitcher";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
 import type { ClubEventPatch } from "./lib/club-store";
@@ -61,10 +65,15 @@ type AppProps = {
 export default function App({ onSignOut }: AppProps) {
   const clock = useKstNow();
   const [page, setPage] = useState<AppPage>("dashboard");
-  const { data, applyClubData, patchEvent } = useClubData(seed);
-  const [done, setDone] = useState<Set<string>>(() => loadDoneIds());
+  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed);
+  const academicYear = data.club_info.academic_year;
+  const [done, setDone] = useState<Set<string>>(() => loadDoneIds(academicYear));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goToday, setGoToday] = useState(false);
+
+  useEffect(() => {
+    setDone(loadDoneIds(academicYear));
+  }, [academicYear]);
 
   const events = useMemo(
     () => buildOpsEvents(data, clock.civil, done),
@@ -80,7 +89,7 @@ export default function App({ onSignOut }: AppProps) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      saveDoneIds(next);
+      saveDoneIds(academicYear, next);
       return next;
     });
   }
@@ -107,7 +116,7 @@ export default function App({ onSignOut }: AppProps) {
         if (!prev.has(patch.task!.id)) return prev;
         const next = new Set(prev);
         next.delete(patch.task!.id);
-        saveDoneIds(next);
+        saveDoneIds(academicYear, next);
         return next;
       });
     }
@@ -128,9 +137,15 @@ export default function App({ onSignOut }: AppProps) {
         <header className="flex shrink-0 items-center justify-between border-b border-border bg-bg2 px-6 py-4">
           <div>
             <h1 className="font-display text-lg font-bold text-fg">{PAGE_LABEL[page]}</h1>
-            <p className="mt-0.5 text-[12px] text-fg3">
-              {data.club_info.academic_year}년 · {data.club_info.club_name}
-            </p>
+            <div className="mt-0.5">
+              <SeasonSwitcher
+                clubName={data.club_info.club_name}
+                activeYear={academicYear}
+                seasons={seasons}
+                onSwitch={switchSeason}
+                onStartNewSeason={startNewSeason}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
