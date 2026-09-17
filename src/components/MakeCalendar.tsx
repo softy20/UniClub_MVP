@@ -1,3 +1,42 @@
+/**
+ * 🧭 UniClub - MakeCalendar (달력 화면)
+ *
+ * 한 달치 달력을 그려주고, 그 달에 있는 행사들을 날짜 칸 안에 표시해 주는 화면입니다.
+ * 이전 달/다음 달 이동, 특정 날짜로 바로 이동, 카테고리별로 행사 숨기고 보이기 기능이 들어 있습니다.
+ *
+ * 📌 주요 기능:
+ * - 화면에 보여줄 달(년/월)을 계산하고, 그 달의 날짜 칸(빈칸 포함)을 만듭니다.
+ * - 선택된 카테고리에 맞는 행사만 걸러서 각 날짜 칸에 보여줍니다.
+ * - 이전 달, 다음 달 버튼과 날짜 직접 선택 버튼으로 원하는 달로 이동합니다.
+ * - "오늘로 이동" 신호를 받으면 오늘이 있는 달로 화면을 옮깁니다.
+ * - 특정 행사를 지정하면(focusEvent) 그 행사가 있는 달로 자동으로 이동합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { MakeCalendar } from "./components/MakeCalendar";
+ * <MakeCalendar
+ *   events={events}
+ *   clock={kstClock}
+ *   onSelect={(event) => openEventDetail(event)}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): events(행사 목록), clock(오늘 날짜 정보),
+ *   onSelect(행사를 눌렀을 때 실행할 함수), focusEvent(집중해서 보여줄 행사),
+ *   focusToday(오늘로 이동할지 여부), onTodayFocused(오늘 이동이 끝났음을 알리는 함수)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): viewYear/viewMonth(현재 보고 있는 년/월),
+ *   active(현재 켜져 있는 카테고리 목록)
+ * - 내부에서만 쓰는 함수: isDated(날짜가 있는 행사인지 확인), focusMonth(처음에 보여줄 달 계산)
+ *
+ * 💡 팁 및 주의사항:
+ * - 날짜가 없는(모호한) 행사는 달력에 표시되지 않고 제외됩니다.
+ * - 카테고리 목록이 바뀌면(예: 새로운 분류가 생기면) 선택 상태가 자동으로 초기화됩니다(전체 선택).
+ * - 달력 칸 하나에 행사가 4개 이상이면 3개만 보여주고 "+N"으로 나머지 개수를 표시합니다.
+ *
+ * @file MakeCalendar.tsx
+ * @module components/MakeCalendar
+ */
 import { useEffect, useMemo, useState } from "react";
 import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 import { monthCells } from "../lib/calendar";

@@ -1,3 +1,44 @@
+/**
+ * 🧭 UniClub - Sidebar (왼쪽 메뉴 바)
+ *
+ * 화면 왼쪽에 항상 붙어 있는 메뉴 바입니다. 대시보드, 캘린더, 할 일 목록, AI 일정 추출
+ * 화면으로 이동하는 버튼과, 전체 진행률, 카테고리별 행사 개수를 보여줍니다.
+ *
+ * 📌 주요 기능:
+ * - 4개의 메뉴(대시보드/캘린더/할 일 목록/AI 일정 추출) 버튼을 보여주고 현재 위치를 표시합니다.
+ * - 2학기 전체 진행률을 막대 그래프로 보여줍니다.
+ * - 행사 분류(카테고리)별로 몇 개의 행사가 있는지 세어서 목록으로 보여줍니다.
+ * - 동아리 이름의 첫 글자를 아이콘처럼 보여주고, 동아리 이름을 하단에 표시합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { Sidebar } from "./components/Sidebar";
+ * <Sidebar
+ *   current="calendar"
+ *   onNavigate={(page) => setCurrentPage(page)}
+ *   events={events}
+ *   clubName="ABC 동아리"
+ *   overallPct={72}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 타입: AppPage(현재 화면을 나타내는 값: "dashboard" | "calendar" | "tasks" | "manual")
+ * - export되는 상수: PAGE_LABEL(각 화면 값에 대응하는 한글 이름)
+ * - 외부에서 전달받는 데이터(Props): current(현재 보고 있는 화면), onNavigate(메뉴를 눌렀을 때
+ *   실행할 함수), events(행사 목록, 카테고리 개수를 세는 데 사용), clubName(동아리 이름),
+ *   overallPct(전체 진행률 퍼센트)
+ * - 이 컴포넌트는 자기 안에 따로 바뀌는 데이터(State)가 없습니다. 모든 값은 Props로 받습니다.
+ * - 의존성: ../lib/ops(카테고리 스타일과 분류 목록을 가져오는 함수)
+ *
+ * 💡 팁 및 주의사항:
+ * - 카테고리 목록 중 행사 개수가 0개인 분류는 화면에 표시되지 않습니다.
+ * - 메뉴 항목(NAV)은 이 파일 위쪽에 고정된 배열로 정의되어 있어서, 메뉴를 추가/삭제하려면
+ *   그 배열과 AppPage 타입, PAGE_LABEL을 함께 맞춰줘야 합니다.
+ *
+ * @file Sidebar.tsx
+ * @module components/Sidebar
+ */
 import { CalendarBlank, CheckSquare, Lightning, SquaresFour } from "@phosphor-icons/react";
 import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 

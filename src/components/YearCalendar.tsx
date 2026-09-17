@@ -1,3 +1,36 @@
+/**
+ * 🧭 UniClub - YearCalendar
+ *
+ * 한 해의 일정을 월별 달력 형태로 보여주는 화면입니다. 날짜를 눌러 그날의 행사와 사진을 볼 수 있습니다.
+ *
+ * 📌 주요 기능:
+ * - 월별 달력을 그리고, 각 날짜에 행사가 있으면 색깔 점(dot)으로 표시
+ * - 이전 달/다음 달 이동, 연도와 월을 직접 골라 이동하는 팝업 제공
+ * - 카테고리(범례) 버튼을 눌러 특정 종류의 행사만 필터링해서 볼 수 있음
+ * - 날짜를 클릭하면 오른쪽에 그날의 행사 상세 목록이 열리는 패널 표시
+ * - 행사에 사진을 첨부하면 브라우저에 저장(localStorage)해서 다음에 다시 봐도 남아있음
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * // App.tsx 같은 상위 화면에서 "연간 일정" 탭으로 사용합니다.
+ * <YearCalendar data={clubData} clock={kstClock} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): data(동아리 전체 데이터), clock(한국 시간 기준 현재 시각)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): cursor(현재 보고 있는 달), filter(선택된 카테고리 필터),
+ *   selected(클릭해서 선택한 날짜), photos(날짜별 첨부 사진 목록), pickerOpen(연/월 선택 팝업 열림 여부),
+ *   pickerYear(팝업에서 고른 연도)
+ * - 이 파일이 내보내는 것: YearCalendar 컴포넌트
+ *
+ * 💡 팁 및 주의사항:
+ * - 사진 데이터는 서버가 아니라 브라우저의 localStorage에만 저장되므로, 다른 기기나 다른 브라우저에서는 보이지 않습니다.
+ * - 팝업 바깥을 클릭하거나 Esc 키를 누르면 연/월 선택 팝업이 자동으로 닫히도록 이벤트를 직접 연결해서 관리합니다.
+ * - 행사 목록은 useMemo로 한 번 계산해서 재사용하므로, data가 바뀔 때만 다시 계산됩니다.
+ *
+ * @file YearCalendar.tsx
+ * @module components/YearCalendar
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CaretDown, CaretLeft, CaretRight, X } from "@phosphor-icons/react";
 import type { ClubData } from "../lib/types";
