@@ -6,10 +6,12 @@ import { useAuth } from "./hooks/useAuth";
 import "./index.css";
 
 function Root() {
-  const { session, loading, signIn, signUp, signOut } = useAuth();
+  const { session, loading, signIn, signUp, signInWithGoogle, signOut } = useAuth();
 
   if (loading) return null;
-  if (!session) return <AuthGate onSignIn={signIn} onSignUp={signUp} />;
+  if (!session) {
+    return <AuthGate onSignIn={signIn} onSignUp={signUp} onSignInWithGoogle={signInWithGoogle} />;
+  }
   return <App onSignOut={signOut} />;
 }
 

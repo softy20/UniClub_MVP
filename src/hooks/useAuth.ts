@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { translateAuthError } from "../lib/authErrors";
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -19,17 +20,22 @@ export function useAuth() {
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) throw new Error(translateAuthError(error.message));
   }
 
   async function signUp(email: string, password: string) {
     const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    if (error) throw new Error(translateAuthError(error.message));
+  }
+
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+    if (error) throw new Error(translateAuthError(error.message));
   }
 
   async function signOut() {
     await supabase.auth.signOut();
   }
 
-  return { session, user: session?.user ?? null, loading, signIn, signUp, signOut };
+  return { session, user: session?.user ?? null, loading, signIn, signUp, signInWithGoogle, signOut };
 }
