@@ -28,8 +28,8 @@
  * @file DashboardPage.tsx
  * @module components/DashboardPage
  */
-import { formatDday, type OpsEvent } from "../lib/ops";
-import { DdayBadge, Tag } from "./marks";
+import type { OpsEvent } from "../lib/ops";
+import { DdayBadge, Tag, TaskDueBadge } from "./marks";
 
 type DashboardPageProps = {
   events: OpsEvent[];
@@ -40,6 +40,7 @@ type DashboardPageProps = {
 type UrgentTodo = {
   id: string;
   text: string;
+  daysBefore: number;
   daysLeft: number;
   role: string;
   event: OpsEvent;
@@ -50,7 +51,14 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
     .flatMap((event) =>
       event.checklist
         .filter((item) => !item.done && item.daysLeft >= 0 && item.daysLeft <= 7)
-        .map((item) => ({ id: item.id, text: item.text, daysLeft: item.daysLeft, role: item.role, event })),
+        .map((item) => ({
+          id: item.id,
+          text: item.text,
+          daysBefore: item.daysBefore,
+          daysLeft: item.daysLeft,
+          role: item.role,
+          event,
+        })),
     )
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
@@ -93,7 +101,7 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
               className="cursor-pointer rounded-xl border border-border bg-card p-4 text-left transition-all hover:scale-[1.01]"
             >
               <div className="mb-2 flex items-center gap-2">
-                <DdayBadge dday={formatDday(todo.daysLeft)} />
+                <TaskDueBadge daysBefore={todo.daysBefore} daysLeft={todo.daysLeft} />
                 <Tag cat={todo.event.category} />
               </div>
               <p className="font-display font-semibold text-fg">{todo.text}</p>

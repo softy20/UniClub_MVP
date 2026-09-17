@@ -152,6 +152,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
         eventId: event.event_id,
         eventDate,
         dueDate,
+        daysBefore: task.days_before_dday,
         role: task.assigned_role,
         mandatory: task.is_mandatory,
         details: task.action_details,
@@ -170,6 +171,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
       eventId: `gift-${index}`,
       eventDate,
       dueDate,
+      daysBefore: 14,
       role: "총무",
       mandatory: true,
       details: [
