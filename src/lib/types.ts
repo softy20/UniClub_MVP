@@ -110,6 +110,13 @@ export type ClubData = {
   }[];
 };
 
+/** 로그인한 사용자가 속한 동아리 하나(계정 <-> 동아리 N:M 관계의 한 행). */
+export type ClubSummary = {
+  id: string;
+  name: string;
+  role: "owner" | "member";
+};
+
 export type BoardTask = {
   id: string;
   name: string;
