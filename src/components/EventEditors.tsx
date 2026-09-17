@@ -1,3 +1,37 @@
+/**
+ * 🧭 UniClub - EventEditors
+ *
+ * 행사를 수정할 때 쓰는 작은 입력 도구 모음입니다. 카테고리를 고르는 버튼과 날짜를 고르는 버튼(달력 팝업)을 제공합니다.
+ *
+ * 📌 주요 기능:
+ * - EventCategoryButton: 버튼을 누르면 카테고리 목록이 드롭다운으로 열리고, 하나를 선택하면 색깔 있는 태그로 표시
+ * - EventDateButton: 버튼을 누르면 작은 달력 팝업이 뜨고, 날짜를 클릭하면 선택되며 D-Day가 자동 계산되어 표시됨
+ * - 달력 팝업 안에서 연도를 점프해서 원하는 달로 바로 이동하는 기능 제공
+ * - 팝업 바깥 클릭, 스크롤, 창 크기 변경, Esc 키 입력 시 팝업이 자동으로 닫히도록 처리
+ * - 날짜 문자열("YYYY-MM-DD")을 실제 날짜 객체로 바꿔주는 보조 함수(isoDateParts, dateFromIso)도 함께 제공
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * // EventPanel.tsx 등 행사 수정 화면에서 사용합니다.
+ * <EventCategoryButton category="세미나" choices={["세미나", "MT", "기타"]} open={open} onToggle={toggle} onSelect={setCategory} />
+ * <EventDateButton value="2026-09-20" today={new Date()} onChange={(iso) => setDate(iso)} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props):
+ *   EventCategoryButton → category(현재 선택된 카테고리), choices(고를 수 있는 목록), open(드롭다운 열림 여부), onToggle, onSelect
+ *   EventDateButton → value(현재 선택된 날짜), today(오늘 날짜), onChange(날짜 선택 시 실행할 함수) 등
+ * - 컴포넌트 안에서 바뀌는 데이터(State, EventDateButton 기준): open(달력 팝업 열림 여부), jumpOpen(연도 점프 화면 열림 여부),
+ *   jumpYear(점프할 연도), anchor(팝업 위치 좌표), view(현재 달력이 보여주는 연/월)
+ * - 이 파일이 내보내는 것: isoDateParts, dateFromIso(날짜 문자열 변환 함수), EventCategoryButton, EventDateButton 컴포넌트
+ *
+ * 💡 팁 및 주의사항:
+ * - EventDateButton의 달력 팝업은 createPortal을 사용해서 document.body에 그려집니다. 그래서 다른 요소에 잘리지 않고 화면 위에 항상 보입니다.
+ * - 팝업 위치는 버튼의 화면상 위치를 계산해서 화면 밖으로 나가지 않게 자동으로 조정됩니다.
+ *
+ * @file EventEditors.tsx
+ * @module components/EventEditors
+ */
 import { CalendarBlank } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";

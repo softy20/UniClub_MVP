@@ -1,3 +1,51 @@
+/**
+ * 🧭 UniClub - RoleTodoGroups (부서별 할 일 목록 부품)
+ *
+ * 할 일(TO-DO) 목록을 부서(담당자)별로 묶어서 보여주고, 완료 체크·수정·삭제·추가까지
+ * 할 수 있게 해주는 공통 부품입니다. TasksPage와 ManualPreview 등 여러 화면에서 재사용됩니다.
+ *
+ * 📌 주요 기능:
+ * - 할 일들을 담당 부서 기준으로 묶어서 그룹별로 접었다 펼 수 있습니다.
+ * - 완료된 할 일을 숨기거나 보이게 하는 토글 버튼을 제공합니다.
+ * - "수정 모드"를 켜면 할 일 이름 수정, D-Day(마감일) 수정, 삭제가 가능해집니다.
+ * - 새 할 일을 추가할 때 담당 부서와(필요하면) 어떤 행사에 속할지 선택할 수 있습니다.
+ * - "panel"과 "tasks" 두 가지 모양(variant)으로 다르게 그려질 수 있습니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { RoleTodoGroups } from "./components/RoleTodoGroups";
+ * <RoleTodoGroups
+ *   heading="부서별 할 일"
+ *   items={items}
+ *   roster={roster}
+ *   variant="tasks"
+ *   onToggle={(id) => toggleTask(id)}
+ *   onPatch={(eventId, patch) => updateEvent(eventId, patch)}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 타입: RoleTodoItem(할 일 하나의 정보), RoleTodoEventChoice(추가할 때 고를 행사 정보)
+ * - export되는 컴포넌트: RoleTodoGroups(메인 목록), CompletedTodosToggle, TodoEditModeToggle,
+ *   RoleGroupHeader, TodoItemActions, TodoAddForm, TodoAddButton
+ * - 외부에서 전달받는 데이터(Props, RoleTodoGroups 기준): heading(제목), items(할 일 목록),
+ *   roster(부서 목록), variant(화면 모양), canEdit(수정 가능 여부), eventChoices(추가할 행사 목록),
+ *   emptyText(목록이 비었을 때 보여줄 문구), filters(추가로 넣을 필터 UI), onToggle, onPatch
+ * - 컴포넌트 안에서 바뀌는 데이터(State): showDone(완료 항목 표시 여부), manageMode(수정 모드 여부),
+ *   collapsed(접힌 그룹들), editingTaskId/taskDraft(수정 중인 할 일과 입력값),
+ *   editingDdayId/ddayDraft(수정 중인 마감일과 입력값), addingRole/draftText(추가 중인 항목 정보)
+ * - 의존성: ../lib/club-store(수정 데이터 타입), ../lib/ops(부서별로 묶는 함수), ./marks
+ *
+ * 💡 팁 및 주의사항:
+ * - resetKey 값이 바뀌면 펼침/접힘, 수정 모드 등 화면 상태가 전부 초기화됩니다(다른 화면으로
+ *   이동했다가 돌아왔을 때 깨끗한 상태로 보여주기 위함).
+ * - D-Day 입력은 "D-7", "7" 처럼 숫자만 뽑아서 해석하며, 숫자가 아니면 무시됩니다.
+ * - 이 파일은 화면 두 군데(TasksPage, ManualPreview)에서 함께 쓰므로, 수정할 때 두 화면
+ *   모두에 영향이 갑니다.
+ *
+ * @file RoleTodoGroups.tsx
+ * @module components/RoleTodoGroups
+ */
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { CaretDown } from "@phosphor-icons/react";
 import type { ClubEventPatch } from "../lib/club-store";

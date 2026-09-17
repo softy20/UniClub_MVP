@@ -1,3 +1,43 @@
+/**
+ * 🧭 UniClub - types.ts
+ *
+ * 이 프로젝트 전체에서 쓰는 데이터의 "모양(설계도)"을 정의해 놓은 파일입니다.
+ * 동아리 정보, 행사, 할 일, 선물, 온보딩 질문 등이 어떤 형태(어떤 값들을 가지는지)인지 여기서 정합니다.
+ * 실제로 동작하는 코드는 없고, 타입(설계도)만 모여 있습니다.
+ *
+ * 📌 주요 기능:
+ * - 할 일(Task) 하나의 데이터 구조 정의 (이름, 담당자, 마감일 등)
+ * - 동아리 장르(공연, 스포츠, 학술 등) 목록과 이를 다루는 헬퍼 함수 제공
+ * - 행사(Event), 선물/기념일(Gift), 동아리 전체 데이터(ClubData)의 구조 정의
+ * - 보드 화면, 운영 화면에서 쓰는 데이터 구조 정의
+ * - 온보딩(첫 설정) 과정에서 쓰는 질문/답변 구조 정의
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * // 다른 파일에서 타입을 가져다 쓸 때 이렇게 씁니다
+ * import type { ClubData, ClubEvent, BoardTask } from './types'
+ * import { isInferredTask, CLUB_GENRES } from './types'
+ *
+ * function printEvent(event: ClubEvent) { console.log(event.event_name); }
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - TaskSource, ClubTask, isInferredTask: 할 일 데이터와 "AI 추측 여부" 판단 함수
+ * - CLUB_GENRES, ClubGenre, isClubGenre, clubGenreLabel: 동아리 장르 목록과 관련 함수
+ * - ClubEvent, GiftOccasion, ClubData: 행사/선물/동아리 전체 데이터 구조
+ * - BoardTask, UpcomingEvent: 보드(할 일 보드) 화면에서 쓰는 데이터 구조
+ * - RoleDefinition, CategoryDefinition, ClubProfile: 역할/카테고리/동아리 프로필 구조
+ * - OnboardingQuestionCategory, QuestionOption, ClarifyingQuestion, OnboardingQuestion, OnboardingChatMessage: 온보딩(첫 설정 대화) 관련 타입
+ *
+ * 💡 팁 및 주의사항:
+ * - 이 파일은 "타입 전용" 파일이라 실행되는 로직이 거의 없습니다 (isInferredTask, isClubGenre, clubGenreLabel 정도만 실제 함수).
+ * - 새로운 데이터 형태가 필요하면 여기에 타입을 추가하고, 다른 파일에서 import type으로 가져다 쓰세요.
+ * - ClubTask의 task_id에 "_inferred_"라는 문자열이 들어있으면 AI가 추측해서 만든 할 일로 취급됩니다.
+ *
+ * @file types.ts
+ * @module lib/types
+ */
+
 export type TaskSource = "extracted" | "inferred";
 
 export type ClubTask = {

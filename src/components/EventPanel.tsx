@@ -1,3 +1,46 @@
+/**
+ * 🧭 UniClub - EventPanel
+ *
+ * 행사 하나를 클릭했을 때 화면 오른쪽에서 슬라이드로 열리는 상세 패널입니다.
+ * 행사 제목, 날짜, 카테고리를 확인하고 수정할 수 있고, 체크리스트와 메모를 볼 수 있습니다.
+ *
+ * 📌 주요 기능:
+ * - 행사 제목을 클릭해서 바로 수정 (수정 가능한 행사인 경우)
+ * - 카테고리, 날짜를 드롭다운/달력 버튼으로 바로 변경
+ * - 체크리스트 진행률(완료/전체, 퍼센트)을 막대그래프로 표시
+ * - "체크리스트" 탭과 "메모" 탭을 전환하며 볼 수 있음
+ * - 체크리스트는 부서(역할)별로 묶어서 RoleTodoGroups 컴포넌트로 보여줌
+ * - 닫기 버튼을 누르면 패널을 닫도록 상위 화면에 알림
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * // App.tsx 등에서 행사를 선택했을 때 이 패널을 띄웁니다.
+ * <EventPanel
+ *   event={selectedEvent}
+ *   today={new Date()}
+ *   roster={memberList}
+ *   categories={categoryList}
+ *   onClose={() => setSelectedEvent(null)}
+ *   onToggle={(checkId) => toggleChecklistItem(checkId)}
+ *   onPatch={(eventId, patch) => updateEvent(eventId, patch)}
+ * />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): event(선택된 행사 정보), today(오늘 날짜), roster(멤버 목록),
+ *   categories(카테고리 목록), onClose(패널 닫기 함수), onToggle(체크리스트 항목 토글 함수), onPatch(행사 정보 수정 함수)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): tab(체크리스트/메모 중 어느 탭이 열려있는지),
+ *   editingTitle(제목을 수정 중인지), titleDraft(입력 중인 제목 임시 값), openCat(카테고리 드롭다운 열림 여부)
+ * - 이 파일이 내보내는 것: EventPanel 컴포넌트
+ *
+ * 💡 팁 및 주의사항:
+ * - event.id가 바뀌면(다른 행사를 선택하면) 제목 수정 상태와 카테고리 드롭다운이 자동으로 초기화됩니다.
+ * - 실제 데이터 저장은 이 컴포넌트가 직접 하지 않고, onPatch/onToggle을 통해 상위 컴포넌트로 위임합니다.
+ * - editable이 false인 행사는 제목/카테고리/날짜를 수정할 수 없고 읽기 전용으로만 표시됩니다.
+ *
+ * @file EventPanel.tsx
+ * @module components/EventPanel
+ */
 import { useEffect, useMemo, useState } from "react";
 import { PencilSimple, X } from "@phosphor-icons/react";
 import { toDateInputValue } from "../lib/board";

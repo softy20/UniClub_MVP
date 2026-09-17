@@ -1,3 +1,40 @@
+/**
+ * 🧭 UniClub - marks (작은 표시용 부품 모음)
+ *
+ * 화면 곳곳에서 반복해서 쓰이는 작은 표시 부품들(분류 태그, D-Day 배지, 담당자 칩,
+ * 담당자 선택 드롭다운, 카테고리 필터)을 모아둔 파일입니다.
+ *
+ * 📌 주요 기능:
+ * - Tag: 행사 분류(카테고리)를 색깔 있는 알약 모양으로 보여줍니다. 삭제/클릭 기능도 넣을 수 있습니다.
+ * - DdayBadge / DminusBadge: 마감일까지 남은 날짜(D-7, D-0, D+3 등)를 색깔로 구분해서 보여줍니다.
+ * - RoleChip: 담당 부서 이름을 색깔 있는 칩으로 보여줍니다. 클릭해서 수정하거나 삭제할 수 있습니다.
+ * - RoleSelect: 담당 부서를 바꿀 수 있는 드롭다운 목록을 보여줍니다.
+ * - CategoryFilter: 전체 행사 중 원하는 분류만 켜고 끌 수 있는 필터 버튼 묶음입니다.
+ * - roleAccent: 부서 이름에 따라 항상 같은 색을 골라주는 함수입니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { Tag, RoleChip, CategoryFilter } from "./components/marks";
+ * <Tag cat="MT" />
+ * <RoleChip name="기획팀" roster={["기획팀", "홍보팀"]} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: Tag, DdayBadge, RoleChip, RoleSelect, DminusBadge, CategoryFilter
+ * - export되는 함수/상수: roleAccent(이름별 색상 계산), ROLE_COLORS(부서 색상 목록)
+ * - RoleSelect 내부 State: open(드롭다운 열림 여부), anchor(드롭다운 위치 좌표)
+ * - 의존성: ../lib/ops(카테고리 스타일, 분류 목록 뽑기), react-dom의 createPortal(드롭다운을
+ *   화면 최상단에 겹쳐 그리기 위해 사용)
+ *
+ * 💡 팁 및 주의사항:
+ * - RoleSelect의 드롭다운은 createPortal로 document.body에 그려지기 때문에, 화면 바깥
+ *   클릭이나 스크롤, 창 크기 변경이 있으면 자동으로 닫히도록 이벤트를 등록/해제합니다.
+ * - 이 파일에 있는 컴포넌트들은 다른 여러 화면에서 공통으로 가져다 쓰는 "부품"이므로,
+ *   여기를 고치면 그 부품을 쓰는 모든 화면의 모양이 함께 바뀝니다.
+ *
+ * @file marks.tsx
+ * @module components/marks
+ */
 import { CaretDown } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";

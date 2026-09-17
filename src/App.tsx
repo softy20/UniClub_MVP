@@ -1,3 +1,42 @@
+/**
+ * 🧭 UniClub - App
+ *
+ * 로그인 후 보이는 메인 화면입니다. 왼쪽 사이드바와 오른쪽 본문 영역을 조합해서
+ * 대시보드, 달력, 할 일, AI 입력 페이지를 전환해서 보여주는 역할을 합니다.
+ *
+ * 📌 주요 기능:
+ * - 사이드바 메뉴를 눌러 대시보드/달력/할 일/AI 입력 페이지 사이를 이동합니다.
+ * - 동아리 데이터(useClubData)를 불러오고, 수정된 내용을 저장합니다.
+ * - 행사와 할 일 목록을 계산해서 각 페이지 컴포넌트에 전달합니다.
+ * - 할 일 완료 체크(toggle)와 완료 상태를 브라우저에 저장(saveDoneIds)합니다.
+ * - 특정 행사를 클릭하면 오른쪽에서 상세 패널(EventPanel)을 열어줍니다.
+ * - "오늘" 버튼을 누르면 오늘 날짜가 보이는 달력으로 바로 이동합니다.
+ * - 로그아웃 버튼을 누르면 상위(main.tsx)에서 받은 onSignOut 함수를 실행합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * // main.tsx에서 로그인이 확인된 뒤 이렇게 사용합니다
+ * <App onSignOut={signOut} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - Props onSignOut: 로그아웃 버튼을 눌렀을 때 실행할 함수
+ * - State page: 지금 보고 있는 페이지 (dashboard/calendar/tasks/manual)
+ * - State done: 완료 처리한 할 일 목록
+ * - State selectedId: 상세 패널로 열어본 행사의 아이디
+ * - State goToday: "오늘" 버튼을 눌렀는지 여부 (달력 이동용)
+ * - 화면 조합: Sidebar, DashboardPage, MakeCalendar, TasksPage, AiParsePage, EventPanel
+ *
+ * 💡 팁 및 주의사항:
+ * - events, totalTasks, overallPct 같은 값은 매번 새로 계산하지 않고
+ *   useMemo로 필요할 때만 다시 계산해서 성능을 아낍니다.
+ * - 페이지 이동(go)을 할 때마다 열려 있던 상세 패널은 자동으로 닫힙니다.
+ * - 할 일을 삭제하면(patchEventAndSync) 완료 체크 목록에서도 같이 지워줘서
+ *   데이터가 서로 어긋나지 않게 합니다.
+ *
+ * @file App.tsx
+ * @module App
+ */
 import { useMemo, useState } from "react";
 import club from "./data/club.json";
 import { AiParsePage } from "./components/AiParsePage";
