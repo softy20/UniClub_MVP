@@ -1,3 +1,43 @@
+/**
+ * 🧭 UniClub - ops.ts
+ *
+ * "운영(Ops)" 화면에서 쓰는 데이터를 만드는 파일입니다.
+ * 행사 카테고리별 색상을 정하고, 담당 역할별로 할 일을 묶고, 각 행사의 체크리스트와 D-Day를 계산합니다.
+ *
+ * 📌 주요 기능:
+ * - 행사 카테고리 이름(예: "MT", "부스", "회의")을 보고 어울리는 색상 팔레트 고르기
+ * - 여러 행사에서 등장하는 카테고리 이름 목록을 중복 없이 뽑기
+ * - 담당자(role) 별로 항목들을 그룹으로 묶기
+ * - D-Day 텍스트("D-3", "D+2") 만들기
+ * - 동아리 데이터로부터 운영 화면용 이벤트 목록(체크리스트 포함) 만들기
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * // 운영 화면 컴포넌트에서 이렇게 씁니다
+ * import { buildOpsEvents, categoryStyle, groupByRole } from './ops'
+ *
+ * const opsEvents = buildOpsEvents(clubData, new Date(), doneIdsSet);
+ * const style = categoryStyle('부스 운영'); // { label, color, bg }
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - CAT_PALETTE: 카테고리 색상 팔레트 배열
+ * - CategoryStyle: 카테고리 하나의 색상 정보 타입
+ * - categoryStyle(label), uniqueCategoryLabels(events): 카테고리 색상/이름 관련 함수
+ * - OpsCheck, OpsEvent: 운영 화면에서 쓰는 체크리스트 항목, 이벤트 타입
+ * - groupByRole(items, roster, roleOf): 항목들을 담당자별로 묶는 함수
+ * - formatDday(daysLeft): D-Day 문자열을 만드는 함수
+ * - buildOpsEvents(data, today, done): 운영 화면에 뿌릴 전체 이벤트 목록을 만드는 함수
+ *
+ * 💡 팁 및 주의사항:
+ * - categoryStyle은 미리 정해진 키워드(정규식)에 안 걸리면, 글자를 숫자로 바꿔서(해시) 팔레트 중 하나를 무작위처럼 고정 배정합니다. 같은 이름은 항상 같은 색이 나옵니다.
+ * - buildOpsEvents는 calendar.ts의 buildCalendarEvents와 board.ts의 dayDiff에 의존합니다.
+ * - done(Set<string>)에 들어있는 id와 체크리스트 항목 id가 일치해야 완료 표시가 됩니다.
+ *
+ * @file ops.ts
+ * @module lib/ops
+ */
+
 import { buildCalendarEvents } from "./calendar";
 import { dayDiff } from "./board";
 import type { ClubData } from "./types";

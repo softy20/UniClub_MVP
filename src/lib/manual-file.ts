@@ -1,3 +1,41 @@
+/**
+ * 🧭 UniClub - manual-file.ts
+ *
+ * 동아리 운영 매뉴얼 파일(워드/PDF/텍스트)을 업로드할 때, 그 파일을 읽고 검사하고 AI에게 보낼 수 있는 형태로 바꿔주는 파일입니다.
+ *
+ * 📌 주요 기능:
+ * - 업로드한 파일이 어떤 종류(docx, pdf, text, hwp, 지원안됨)인지 확인
+ * - 파일 크기와 형식이 올바른지 검사하고, 안 맞으면 한국어 오류 메시지 보여주기
+ * - docx 파일에서 순수 텍스트만 뽑아내기 (mammoth 라이브러리 사용)
+ * - 파일을 base64 문자열로 바꿔서 서버(API)로 보낼 수 있게 준비
+ * - 안내 문구(용량 제한, 업로드 팁 등) 상수로 제공
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * // 파일 업로드 컴포넌트에서 이렇게 씁니다
+ * import { readManualFile, filePayloadForApi, MANUAL_ACCEPT } from './manual-file'
+ *
+ * const { payload, previewText } = await readManualFile(file);
+ * const apiPayload = filePayloadForApi(payload);
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - HWP_MESSAGE, MANUAL_UPLOAD_GUIDE, MANUAL_SIZE_GUIDE, MANUAL_ACCEPT, MAX_MANUAL_FILE_BYTES: 안내 문구/제한 상수
+ * - ManualFileKind, ManualFilePayload: 파일 종류와 파일 데이터의 타입
+ * - classifyManualFile(file): 파일 확장자를 보고 종류를 구분하는 함수
+ * - readManualFile(file): 파일을 실제로 읽어서 payload와 미리보기 텍스트를 만드는 함수 (비동기)
+ * - filePayloadForApi(file): 서버에 보낼 형태로 파일 정보를 변환하는 함수
+ *
+ * 💡 팁 및 주의사항:
+ * - 파일은 4MB(MAX_MANUAL_FILE_BYTES)를 넘으면 읽지 않고 오류를 던집니다.
+ * - docx 파일은 mammoth 라이브러리를 동적으로 불러와서(import) 텍스트만 추출하고, 원본 파일 데이터는 보내지 않습니다.
+ * - hwp/hwpx 파일은 지원하지 않으며, 사용자에게 워드로 변환하라고 안내합니다.
+ * - readManualFile은 실패 시 Error를 던지므로, 호출하는 쪽에서 try/catch로 감싸야 합니다.
+ *
+ * @file manual-file.ts
+ * @module lib/manual-file
+ */
+
 export const HWP_MESSAGE = "한글(.hwp) 파일은 워드(.docx)로 변환하여 업로드해 주세요";
 export const MANUAL_UPLOAD_GUIDE =
   "동아리 조직 구성, 연간 행사 일정, 사전 준비 기간, 담당 부서가 명시되어 있으면 AI 정확도가 높아집니다.";

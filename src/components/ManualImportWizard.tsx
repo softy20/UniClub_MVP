@@ -1,3 +1,46 @@
+/**
+ * 🧭 UniClub - ManualImportWizard (운영 매뉴얼로 일정 만들기 마법사)
+ *
+ * 동아리 운영 매뉴얼(글이나 파일)을 올리면, AI가 부서 구성과 행사 일정을 뽑아내도록 안내해 주는 여러 단계짜리 화면입니다. 
+ * 파일 업로드 → 질문에 답하기 → 부서/분류 확정 → 일정 추출 → 미리보기 순서로 진행됩니다.
+ *
+ * 📌 주요 기능:
+ * - 매뉴얼 텍스트를 직접 입력하거나 파일(DOCX, PDF, TXT, MD)을 올릴 수 있습니다.
+ * - 서버에 매뉴얼을 보내서 부서(역할) 초안과 확인 질문을 받아옵니다.
+ * - 사용자가 질문에 답하면 그 답을 서버에 보내 부서표를 점점 더 정확하게 다듬습니다.
+ * - 부서와 행사 분류가 확정되면, 그 기준으로 실제 행사 일정을 여러 구간(계절)으로 나눠 추출합니다.
+ * - 일정 추출이 오래 걸리거나 시간 초과가 나면, 구간을 반으로 쪼개서 다시 시도합니다.
+ * - 추출이 끝나면 ManualPreview 화면으로 넘어가서 결과를 미리 보고 수정할 수 있습니다.
+ * - 부서/분류를 화면에서 직접 추가, 이름 변경, 삭제할 수 있습니다.
+ * - 샘플 데이터로 미리보기 화면을 바로 열어볼 수도 있습니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * import { ManualImportWizard } from "./components/ManualImportWizard";
+ * <ManualImportWizard onApply={(clubData) => saveToCalendar(clubData)} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): onApply(완성된 일정 데이터를 달력에 적용할 때 실행할 함수)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): 현재 단계(phase), 입력한 텍스트/파일,
+ *   동아리 이름과 연도, 부서/행사 분류 초안, 질문 목록과 답변, 확정된 부서표(profile),
+ *   추출된 일정(firstEvents/secondEvents), 진행률 표시용 값들, 로딩/에러 상태 등
+ * - 내부 전용 하위 컴포넌트: FileDropzone(파일 끌어다 놓기), AddRow(부서/분류 추가 입력줄),
+ *   ChipRenameInput(이름 바꾸기 입력창), ParseProgressBar(진행률 막대),
+ *   ClarifyingBusyBanner(답변 처리 중 안내), ExtractedRolesPanel/ExtractedCategoriesPanel(추출 결과 보여주기)
+ * - 의존성: ../lib/manual-file(파일 읽기/분류), ../lib/manual-months(월 구간 확인),
+ *   ../lib/parse-events(일정 합치기), ../lib/types(여러 데이터 타입), ./ManualPreview, ./marks
+ *
+ * 💡 팁 및 주의사항:
+ * - 서버와 통신하는 부분이 많아서(fetch로 여러 Netlify 함수 호출), 네트워크 오류나 시간 초과
+ *   처리가 곳곳에 들어 있습니다. 코드를 고칠 때는 오류 처리 흐름을 함께 확인하세요.
+ * - 매뉴얼 텍스트가 짧고 월별 구분이 없으면 한 번에, 길면 절반씩 나눠서 일정을 추출합니다.
+ * - 진행률 막대(progress bar)는 실제 진행 상황을 흉내 내는 애니메이션이 섞여 있어 정확한 퍼센트가
+ *   아닐 수 있습니다.
+ *
+ * @file ManualImportWizard.tsx
+ * @module components/ManualImportWizard
+ */
 import { Lightbulb } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
 import clubSample from "../data/club.json";
@@ -43,21 +86,21 @@ type StartOk = {
 
 type AnswerOk =
   | {
-      ok: true;
-      status: "clarifying";
-      draft_roles: RoleDefinition[];
-      draft_categories: CategoryDefinition[];
-      questions: ClarifyingQuestion[];
-      assistant_message: string;
-      turn: number;
-    }
+    ok: true;
+    status: "clarifying";
+    draft_roles: RoleDefinition[];
+    draft_categories: CategoryDefinition[];
+    questions: ClarifyingQuestion[];
+    assistant_message: string;
+    turn: number;
+  }
   | {
-      ok: true;
-      status: "locked";
-      profile: ClubProfile;
-      assistant_message: string;
-      turn: number;
-    };
+    ok: true;
+    status: "locked";
+    profile: ClubProfile;
+    assistant_message: string;
+    turn: number;
+  };
 
 type ParseOk = {
   ok: true;
@@ -1035,9 +1078,9 @@ export function ManualImportWizard({ onApply }: ManualImportWizardProps) {
                   </div>
                 </div>
                 <div>
-                  
+
                 </div>
-                
+
               </div>
               <div className="mb-3">
                 <FileDropzone onFileSelect={(file) => void onFile(file)} />
@@ -1130,7 +1173,7 @@ export function ManualImportWizard({ onApply }: ManualImportWizardProps) {
                     ? "매뉴얼에서 감지된 부서 별칭이 있습니다. 통합 여부를 선택하세요."
                     : showExtractedCategories
                       ? "매뉴얼에서 뽑은 짧은 분류입니다. 이후 일정 추출은 이 목록만 사용합니다."
-                    : "매뉴얼에서 추출한 내용입니다. 선택지를 고르면 다음 질문으로 이동합니다."
+                      : "매뉴얼에서 추출한 내용입니다. 선택지를 고르면 다음 질문으로 이동합니다."
                   : "선택지가 없으면 내용을 입력한 뒤 확인을 눌러 주세요."}
               </p>
 
@@ -1283,9 +1326,9 @@ export function ManualImportWizard({ onApply }: ManualImportWizardProps) {
                         loading
                           ? undefined
                           : () => {
-                              setEditingRole(role.role_name);
-                              setEditingRoleText(role.role_name);
-                            }
+                            setEditingRole(role.role_name);
+                            setEditingRoleText(role.role_name);
+                          }
                       }
                       onRemove={loading ? undefined : () => removeRole(role.role_name)}
                     />
@@ -1326,9 +1369,9 @@ export function ManualImportWizard({ onApply }: ManualImportWizardProps) {
                         loading
                           ? undefined
                           : () => {
-                              setEditingCategory(item.label);
-                              setEditingCategoryText(item.label);
-                            }
+                            setEditingCategory(item.label);
+                            setEditingCategoryText(item.label);
+                          }
                       }
                       onRemove={loading ? undefined : () => removeCategory(item.label)}
                     />

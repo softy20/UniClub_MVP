@@ -1,3 +1,41 @@
+/**
+ * 🧭 UniClub - calendar.ts
+ *
+ * 동아리의 행사(events)와 선물/기념일(gifts) 데이터를 달력에 표시할 수 있는 형태로 바꿔주는 파일입니다.
+ * 날짜별로 어떤 일정이 있는지, 그 일정이 어떤 종류(다이빙, MT, 부스 등)인지 계산해 줍니다.
+ *
+ * 📌 주요 기능:
+ * - 날짜를 "YYYY-MM-DD" 문자열로 바꾸거나 두 날짜가 같은 날인지 확인
+ * - 달력 한 칸(월)에 들어갈 날짜 배열(빈 칸 포함)을 계산
+ * - 행사 이름/카테고리 텍스트를 보고 어떤 범례(다이빙, 대면, 임원 등)에 속하는지 분류
+ * - 동아리 데이터(ClubData)를 달력에 뿌릴 수 있는 CalendarEvent 배열로 변환
+ * - 특정 범례로 필터링했을 때 보여줄 이벤트와 표시할 점(dot) 목록 계산
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * // 달력 컴포넌트에서 이렇게 불러와서 씁니다
+ * import { buildCalendarEvents, LEGEND, monthCells, dateKey } from './calendar'
+ *
+ * const events = buildCalendarEvents(clubData)
+ * const cells = monthCells(2025, 3) // 2025년 4월(0부터 시작) 달력 칸 배열
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - LEGEND, LegendId: 달력에 쓰이는 범례(태그) 목록과 그 id 타입
+ * - CalendarEvent: 달력에 표시할 이벤트 하나의 모양(타입)
+ * - dateKey, sameDay, formatPanelDate, monthCells, legendById: 날짜 계산용 함수들
+ * - buildCalendarEvents, visibleEvents, dotsForEvents: 이벤트 목록을 만들고 필터링하는 함수들
+ * - WEEKDAYS: 요일 이름 배열("일","월",...)
+ *
+ * 💡 팁 및 주의사항:
+ * - EVENT_KINDS는 특정 데모 행사 id에 대한 하드코딩된 매핑이라, 새로운 행사 id는 kindsFromText의 텍스트 규칙으로 분류됩니다.
+ * - buildCalendarEvents는 행사와 선물을 합친 뒤 날짜순으로 정렬해서 반환합니다.
+ * - legendById는 존재하지 않는 id를 넣으면 에러를 던지니 주의하세요.
+ *
+ * @file calendar.ts
+ * @module lib/calendar
+ */
+
 import type { ClubData, ClubEvent, GiftOccasion } from "./types";
 import { estimateEventDate, estimateGiftDate } from "./board";
 

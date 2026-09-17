@@ -1,3 +1,42 @@
+/**
+ * 🧭 UniClub - board.ts
+ *
+ * "이번 주 할 일 보드" 화면에 필요한 데이터를 계산하는 파일입니다.
+ * 동아리 행사와 선물 일정에서 할 일(task)을 뽑아내고, 이번 주/다음 주에 해야 할 일과 마감일(D-Day)을 정리합니다.
+ *
+ * 📌 주요 기능:
+ * - 행사 날짜, 선물 날짜를 문자열/요일 정보로부터 실제 Date로 추정 계산
+ * - 행사와 선물 데이터를 할 일(BoardTask) 목록으로 펼치기(flatten)
+ * - 이번 주, 다음 주에 해야 할 일을 마감일 기준으로 골라서 정렬
+ * - 가장 가까운 다가오는 행사(upcoming event) 찾기
+ * - 날짜를 "3월 4일 화" 같은 한국어 문자열로 포맷
+ * - D-Day 텍스트("D-3", "오늘", "지연 2일" 등) 계산
+ * - 완료한 할 일 id 목록을 브라우저 localStorage에 저장/불러오기
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * // 보드 화면 컴포넌트에서 이렇게 씁니다
+ * import { buildBoard, taskDdayLabel, loadDoneIds, saveDoneIds } from './board'
+ *
+ * const board = buildBoard(clubData); // { thisWeek, nextWeek, upcoming, ... }
+ * const label = taskDdayLabel(task.dueDate); // { text: "D-2", tone: "soon" }
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - dayDiff, toDateInputValue, estimateEventDate, estimateGiftDate: 날짜 계산 함수들
+ * - buildBoard(data, today?): 이번 주/다음 주 할 일과 다가오는 행사를 묶어서 반환
+ * - formatDate, formatRange, taskDdayLabel: 화면에 보여줄 문자열을 만드는 함수들
+ * - loadDoneIds, saveDoneIds: 완료 체크 상태를 브라우저에 저장하는 함수들 (STORAGE_KEY: "uniclub-done-v1")
+ *
+ * 💡 팁 및 주의사항:
+ * - loadDoneIds/saveDoneIds는 브라우저의 localStorage를 직접 건드리는 부수효과(side effect)가 있습니다. 서버 환경(SSR)에서는 쓸 수 없습니다.
+ * - 날짜 계산은 항상 정오(12시) 기준으로 맞춰서(atNoon), 시간대 차이로 날짜가 하루씩 밀리는 문제를 방지합니다.
+ * - buildBoard의 today 기본값은 한국 시간(KST) 기준 오늘 날짜(readKst().civil)입니다.
+ *
+ * @file board.ts
+ * @module lib/board
+ */
+
 import type { BoardTask, ClubData, ClubEvent, GiftOccasion, UpcomingEvent } from "./types";
 import { readKst } from "./kst";
 

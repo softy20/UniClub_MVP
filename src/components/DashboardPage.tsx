@@ -1,3 +1,33 @@
+/**
+ * 🧭 UniClub - DashboardPage
+ *
+ * 동아리 운영 현황을 한눈에 보여주는 대시보드 화면입니다.
+ * 전체 행사 수, 완료된 할 일 개수, 임박한 행사, 전체 행사 목록을 정리해서 보여줍니다.
+ *
+ * 📌 주요 기능:
+ * - 전체 행사 수 / 완료 태스크 비율 / D-7 이내 임박 행사 수 / 임원 수를 카드 형태 통계로 표시
+ * - D-7 이내로 다가온 "긴급 행사" 목록을 남은 일수 순으로 정렬해서 보여줌
+ * - 각 임박 행사의 체크리스트 진행률과 아직 안 끝난 할 일 일부를 미리보기로 표시
+ * - 전체 행사를 날짜순 표 형태로 정리해서 보여주고, 행을 클릭하면 상세 패널을 열 수 있음
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * // 이 컴포넌트는 App.tsx 같은 상위 화면에서 아래처럼 사용합니다.
+ * <DashboardPage events={events} officerCount={5} onSelect={(event) => openPanel(event)} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 외부에서 전달받는 데이터(Props): events(행사 목록), officerCount(임원 수), onSelect(행사를 눌렀을 때 실행할 함수)
+ * - 컴포넌트 안에서 바뀌는 데이터(State): 없음 (전달받은 events로 매번 새로 계산만 함)
+ * - 이 파일이 내보내는 것: DashboardPage 컴포넌트
+ *
+ * 💡 팁 및 주의사항:
+ * - 통계 값(완료율, 긴급 행사 수 등)은 매 렌더링마다 events 배열을 다시 계산해서 만듭니다. 별도로 저장해두지 않습니다.
+ * - 행사나 할 일 데이터 자체를 수정하는 기능은 없고, 클릭 시 onSelect로 알려주기만 합니다.
+ *
+ * @file DashboardPage.tsx
+ * @module components/DashboardPage
+ */
 import type { OpsEvent } from "../lib/ops";
 import { DdayBadge, Tag } from "./marks";
 
