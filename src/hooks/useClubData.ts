@@ -18,11 +18,13 @@
  * 🔗 사용 예시:
  * ```tsx
  * // App.tsx 등에서 이렇게 가져다 씁니다
- * const { data, loading, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed);
+ * const { data, loading, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed, clubId, accessToken);
  * ```
  *
  * 🎯 주요 관리 요소:
  * - 매개변수(seed): 서버 응답이 오기 전까지 화면에 보여줄 기본 동아리 데이터
+ * - 매개변수(clubId): 지금 보고 있는 동아리의 id. 이게 바뀌면 그 동아리의 데이터를 새로 불러옵니다.
+ * - 매개변수(accessToken): 서버(Netlify 함수)에 이 동아리 멤버임을 증명하는 로그인 토큰
  * - 반환값 data: 현재 화면에 표시 중인 동아리 데이터
  * - 반환값 loading: 서버에서 데이터를 불러오는 중인지 여부
  * - 반환값 seasons: 서버에 저장되어 있는 학년도(연도) 목록, 오름차순
@@ -32,8 +34,9 @@
  * - 반환값 startNewSeason(year): 지금 데이터를 템플릿으로 새 학년도를 만들고 그 시즌으로 전환하는 함수
  *
  * 💡 팁 및 주의사항:
- * - 서버 통신은 "/.netlify/functions/club-data" 주소로 이루어지고, "?season=연도" 쿼리로
- *   특정 학년도를 지정합니다. 생략하면 서버가 가장 최근 학년도를 돌려줍니다.
+ * - 서버 통신은 "/.netlify/functions/club-data" 주소로 이루어지고, "?club=동아리id" 쿼리로
+ *   동아리를 지정하고 "&season=연도" 쿼리로 특정 학년도를 지정합니다. season을 생략하면
+ *   서버가 가장 최근 학년도를 돌려줍니다. 로그인 토큰은 Authorization 헤더로 함께 보냅니다.
  * - 화면 업데이트(setData)가 서버 저장보다 먼저 일어나서, 사용자는 기다리지 않고
  *   바로 바뀐 화면을 볼 수 있습니다. (저장은 뒤에서 조용히 진행됩니다.)
  * - 컴포넌트가 화면에서 사라진 뒤에는 이전 요청 결과를 반영하지 않도록
@@ -51,21 +54,28 @@ const CLUB_DATA_ENDPOINT = "/.netlify/functions/club-data";
 
 type ClubDataResponse = { ok: boolean; data: ClubData | null; seasons: number[] };
 
-async function fetchClubData(year?: number): Promise<ClubDataResponse> {
-  const url = year !== undefined ? `${CLUB_DATA_ENDPOINT}?season=${year}` : CLUB_DATA_ENDPOINT;
-  const response = await fetch(url);
+function authHeaders(accessToken: string): HeadersInit {
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
+async function fetchClubData(clubId: string, accessToken: string, year?: number): Promise<ClubDataResponse> {
+  const params = new URLSearchParams({ club: clubId });
+  if (year !== undefined) params.set("season", String(year));
+  const response = await fetch(`${CLUB_DATA_ENDPOINT}?${params}`, { headers: authHeaders(accessToken) });
   if (!response.ok) throw new Error(`클럽 데이터 조회 실패 (${response.status})`);
   return (await response.json()) as ClubDataResponse;
 }
 
-async function persistClubData(data: ClubData): Promise<void> {
-  const response = await fetch(CLUB_DATA_ENDPOINT, {
+async function persistClubData(clubId: string, accessToken: string, data: ClubData): Promise<void> {
+  const params = new URLSearchParams({ club: clubId });
+  const response = await fetch(`${CLUB_DATA_ENDPOINT}?${params}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(accessToken) },
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error(`클럽 데이터 저장 실패 (${response.status})`);
 }
+
 
 // 게스트(비로그인 둘러보기) 모드에서는 서버 대신 브라우저 localStorage(guest-store)를 쓴다.
 // 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓴다.
@@ -85,8 +95,8 @@ export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
     load
       .then((res) => {
         if (cancelled) return;
-        if (res.data) setData(res.data);
-        if (res.seasons.length > 0) setSeasons(res.seasons);
+        setData(res.data ?? seed);
+        setSeasons(res.seasons.length > 0 ? res.seasons : [seed.club_info.academic_year]);
       })
       .catch((error) => {
         console.error("클럽 데이터 조회 실패", error);
@@ -102,7 +112,7 @@ export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
   function rememberSeason(year: number) {
     setSeasons((prev) => (prev.includes(year) ? prev : [...prev, year].sort((a, b) => a - b)));
   }
-
+  
   function savePersisted(next: ClubData) {
     if (guest) {
       persistGuestClubData(next);
