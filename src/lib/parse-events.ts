@@ -472,6 +472,12 @@ export function resolveSeasonMerge(
   return events;
 }
 
+/**
+ * 이미 저장되어 있는 시즌 행사(existingEvents) 위에 새로 파싱한 행사(incomingEvents)를
+ * 안전하게 얹는다. 확인 질문 없이 바로 합쳐야 하는 호출부용 하위 호환 래퍼이며, 내부적으로는
+ * planSeasonMerge + resolveSeasonMerge(빈 답변)이다. 답이 없는 질문은 안전한 기본값(따로
+ * 추가)으로 처리한다.
+ */
 export function mergeSeasonEvents(
   existingEvents: ClubEvent[],
   incomingEvents: ClubEvent[],
