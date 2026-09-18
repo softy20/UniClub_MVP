@@ -44,6 +44,7 @@
  */
 import { useEffect, useState } from "react";
 import { buildSeasonTemplate, patchClubEvent, type ClubEventPatch } from "../lib/club-store";
+import { fetchGuestClubData, persistGuestClubData } from "../lib/guest-store";
 import type { ClubData } from "../lib/types";
 
 const CLUB_DATA_ENDPOINT = "/.netlify/functions/club-data";
@@ -66,14 +67,18 @@ async function persistClubData(data: ClubData): Promise<void> {
   if (!response.ok) throw new Error(`클럽 데이터 저장 실패 (${response.status})`);
 }
 
-export function useClubData(seed: ClubData) {
+// 게스트(비로그인 둘러보기) 모드에서는 서버 대신 브라우저 localStorage(guest-store)를 쓴다.
+// 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓴다.
+export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
+  const guest = options?.guest ?? false;
   const [data, setData] = useState<ClubData>(seed);
   const [seasons, setSeasons] = useState<number[]>([seed.club_info.academic_year]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetchClubData()
+    const load = guest ? Promise.resolve(fetchGuestClubData()) : fetchClubData();
+    load
       .then((res) => {
         if (cancelled) return;
         if (res.data) setData(res.data);
@@ -88,18 +93,26 @@ export function useClubData(seed: ClubData) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [guest]);
 
   function rememberSeason(year: number) {
     setSeasons((prev) => (prev.includes(year) ? prev : [...prev, year].sort((a, b) => a - b)));
   }
 
-  function persist(next: ClubData) {
-    setData(next);
-    rememberSeason(next.club_info.academic_year);
+  function savePersisted(next: ClubData) {
+    if (guest) {
+      persistGuestClubData(next);
+      return;
+    }
     persistClubData(next).catch((error) => {
       console.error("클럽 데이터 저장 실패", error);
     });
+  }
+
+  function persist(next: ClubData) {
+    setData(next);
+    rememberSeason(next.club_info.academic_year);
+    savePersisted(next);
   }
 
   function applyClubData(next: ClubData) {
@@ -109,16 +122,15 @@ export function useClubData(seed: ClubData) {
   function patchEvent(eventId: string, patch: ClubEventPatch) {
     setData((prev) => {
       const next = patchClubEvent(prev, eventId, patch);
-      persistClubData(next).catch((error) => {
-        console.error("클럽 데이터 저장 실패", error);
-      });
+      savePersisted(next);
       return next;
     });
   }
 
   function switchSeason(year: number) {
     setLoading(true);
-    fetchClubData(year)
+    const load = guest ? Promise.resolve(fetchGuestClubData(year)) : fetchClubData(year);
+    load
       .then((res) => {
         if (res.data) setData(res.data);
         if (res.seasons.length > 0) setSeasons(res.seasons);
