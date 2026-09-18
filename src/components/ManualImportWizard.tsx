@@ -40,8 +40,10 @@
  * - 진행률 막대(progress bar)는 실제 진행 상황을 흉내 내는 애니메이션이 섞여 있어 정확한 퍼센트가
  *   아닐 수 있습니다.
  * - existingData가 있으면(같은 시즌에 이미 저장된 데이터가 있으면), 파싱이 끝나고 미리보기로
- *   넘어가기 직전에 withSeasonMerge로 한 번 걸러서 기존 행사를 절대 잃지 않게 합니다. 자세한
- *   병합 규칙은 ../lib/parse-events의 mergeSeasonEvents 주석 참고.
+ *   넘어가기 직전에 beginSeasonMerge로 한 번 걸러서 기존 행사를 절대 잃지 않게 합니다. 이름
+ *   같고 달만 다른 행사, 반복 일정 같은 달 중복처럼 자동 판단이 애매하면 곧바로 미리보기로
+ *   가지 않고 merge-review 단계에서 먼저 확인 질문을 보여줍니다. 자세한 병합 규칙은
+ *   ../lib/parse-events의 planSeasonMerge/resolveSeasonMerge 주석 참고.
  *
  * @file ManualImportWizard.tsx
  * @module components/ManualImportWizard
@@ -60,7 +62,15 @@ import {
   type ManualFilePayload,
 } from "../lib/manual-file";
 import { hasMonthSections } from "../lib/manual-months";
-import { mergeClubEvents, mergeSeasonEvents } from "../lib/parse-events";
+import {
+  mergeClubEvents,
+  planSeasonMerge,
+  resolveSeasonMerge,
+  type MonthMismatchAnswer,
+  type RecurringCountAnswer,
+  type SeasonMergeAnswers,
+  type SeasonMergePlan,
+} from "../lib/parse-events";
 import {
   CLUB_GENRES,
   type CategoryDefinition,
@@ -77,7 +87,7 @@ import {
 import { ManualPreview } from "./ManualPreview";
 import { RoleChip, Tag } from "./marks";
 
-type Phase = "input" | "clarifying" | "locked" | "parsed";
+type Phase = "input" | "clarifying" | "locked" | "merge-review" | "parsed";
 
 type StartOk = {
   ok: true;
@@ -561,6 +571,14 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingCategoryText, setEditingCategoryText] = useState("");
   const parseFinishingRef = useRef(false);
+  const [mergePlan, setMergePlan] = useState<SeasonMergePlan | null>(null);
+  const [mergeBase, setMergeBase] = useState<ClubData | null>(null);
+  const [mergeAcademicYear, setMergeAcademicYear] = useState(new Date().getFullYear());
+  const [mergeToday, setMergeToday] = useState(new Date());
+  const [mergeAnswers, setMergeAnswers] = useState<SeasonMergeAnswers>({});
+  const [mergeQuestionIndex, setMergeQuestionIndex] = useState(0);
+  const [mergeOtherOpen, setMergeOtherOpen] = useState(false);
+  const [mergeOtherText, setMergeOtherText] = useState("");
 
   function reset() {
     setPhase("input");
@@ -596,6 +614,12 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
     setEditingRoleText("");
     setEditingCategory(null);
     setEditingCategoryText("");
+    setMergePlan(null);
+    setMergeBase(null);
+    setMergeAnswers({});
+    setMergeQuestionIndex(0);
+    setMergeOtherOpen(false);
+    setMergeOtherText("");
   }
 
   function patchProfile(next: ClubProfile) {
@@ -843,26 +867,65 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
     }
   }
 
-  // 지금 시즌에 이미 저장된 데이터가 있으면, 새로 파싱한 결과를 그 위에 안전하게 얹는다
-  // (기존 행사는 절대 안 바꾸고, 새 행사·새 할 일만 추가 — mergeSeasonEvents 참고).
-  function withSeasonMerge(fresh: ClubData): ClubData {
-    if (!existingData) return fresh;
-    const year = existingData.club_info.academic_year;
-    return {
-      ...fresh,
-      club_info: { ...fresh.club_info, academic_year: year },
-      events: mergeSeasonEvents(existingData.events, fresh.events, year, readKst().civil),
-    };
-  }
-
-  async function finishParsePreview(data: ClubData) {
+  async function completeParseAnimation() {
     parseFinishingRef.current = true;
     setParseCompleted(PARSE_CHUNK_TOTAL);
     setParseFill(100);
     await waitForPaint();
     await waitMs(PARSE_FINISH_MS);
+  }
+
+  async function finishParsePreview(data: ClubData) {
+    await completeParseAnimation();
     setParsed(data);
     setPhase("parsed");
+  }
+
+  // 지금 시즌에 이미 저장된 데이터가 있으면, 새로 파싱한 결과를 그 위에 안전하게 얹는다
+  // (기존 행사는 절대 안 바꾸고, 새 행사·새 할 일만 추가). "이름 같고 달만 다른 행사"나
+  // "반복 일정 같은 달 중복"처럼 자동으로 판단하기 애매한 경우가 있으면 미리보기로 바로
+  // 넘어가지 않고 merge-review 단계에서 사람에게 먼저 확인받는다.
+  async function beginSeasonMerge(fresh: ClubData) {
+    if (!existingData) {
+      await finishParsePreview(fresh);
+      return;
+    }
+    const year = existingData.club_info.academic_year;
+    const today = readKst().civil;
+    const plan = planSeasonMerge(existingData.events, fresh.events, year, today);
+    const base: ClubData = { ...fresh, club_info: { ...fresh.club_info, academic_year: year } };
+    if (plan.questions.length === 0) {
+      await finishParsePreview({ ...base, events: plan.autoEvents });
+      return;
+    }
+    await completeParseAnimation();
+    setMergePlan(plan);
+    setMergeBase(base);
+    setMergeAcademicYear(year);
+    setMergeToday(today);
+    setMergeAnswers({});
+    setMergeQuestionIndex(0);
+    setMergeOtherOpen(false);
+    setMergeOtherText("");
+    setPhase("merge-review");
+  }
+
+  function answerMergeQuestion(value: MonthMismatchAnswer | RecurringCountAnswer) {
+    if (!mergePlan) return;
+    const question = mergePlan.questions[mergeQuestionIndex];
+    if (!question) return;
+    const nextAnswers = { ...mergeAnswers, [question.key]: value };
+    setMergeAnswers(nextAnswers);
+    setMergeOtherOpen(false);
+    setMergeOtherText("");
+    const nextIndex = mergeQuestionIndex + 1;
+    if (nextIndex < mergePlan.questions.length) {
+      setMergeQuestionIndex(nextIndex);
+      return;
+    }
+    if (!mergeBase) return;
+    const events = resolveSeasonMerge(mergePlan, nextAnswers, mergeAcademicYear, mergeToday);
+    void finishParsePreview({ ...mergeBase, events });
   }
 
   async function parseWithProfile(halves?: ParseHalf[]) {
@@ -878,7 +941,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
       setParseStep("연간 일정");
       try {
         const events = await requestEvents();
-        await finishParsePreview(withSeasonMerge(clubDataFromProfile(profile, mergeClubEvents(events), genre)));
+        await beginSeasonMerge(clubDataFromProfile(profile, mergeClubEvents(events), genre));
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
@@ -936,9 +999,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
       }
 
       if (nextFirst && nextSecond && nextFailed.size === 0) {
-        await finishParsePreview(
-          withSeasonMerge(clubDataFromProfile(profile, mergeClubEvents(nextFirst, nextSecond), genre)),
-        );
+        await beginSeasonMerge(clubDataFromProfile(profile, mergeClubEvents(nextFirst, nextSecond), genre));
         return;
       }
       if (lastError) setError(lastError);
@@ -1479,6 +1540,128 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
             </div>
           </section>
         ) : null}
+
+        {phase === "merge-review" && mergePlan ? (() => {
+          const total = mergePlan.questions.length;
+          const question = mergePlan.questions[Math.min(mergeQuestionIndex, total - 1)];
+          if (!question) return null;
+          return (
+            <section className="flex min-h-[calc(100%-1rem)] flex-col justify-center py-8">
+              <div className="mb-10">
+                <div className="mb-2.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold tracking-[0.08em] text-fg3 uppercase">
+                    기존 일정과 확인 {mergeQuestionIndex + 1} / {total}
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  {Array.from({ length: total }, (_, index) => (
+                    <div
+                      key={index}
+                      className="h-1 flex-1 rounded-full transition-colors duration-300"
+                      style={{ background: index <= mergeQuestionIndex ? "var(--accent)" : "var(--border)" }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div key={question.key} className="fade-in rounded-[20px] border border-border bg-card px-10 pt-10 pb-9">
+                <p className="mb-3 text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
+                  {question.kind === "month_mismatch" ? "일정 변경 확인" : "반복 일정 중복 확인"}
+                </p>
+                {question.kind === "month_mismatch" ? (
+                  <>
+                    <h2 className="font-display mb-7 text-[20px] leading-snug font-bold text-fg">
+                      {`"${question.existingEvent.event_name}" 행사가 파일엔 ${question.incomingEvent.target_month}월로 되어
+                      있는데, 이미 저장된 일정엔 ${question.existingEvent.target_month}월로 되어 있어요. 행사 일정이
+                      변경된 건가요?`}
+                    </h2>
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => answerMergeQuestion("same_event")}
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-border bg-bg px-[18px] py-3.5 text-left text-sm font-medium text-fg"
+                      >
+                        {`네, 올해는 ${question.existingEvent.target_month}월로 변경되었어요`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => answerMergeQuestion("different_event")}
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-border bg-bg px-[18px] py-3.5 text-left text-sm font-medium text-fg"
+                      >
+                        아니요, 다른 행사예요
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMergeOtherOpen(true)}
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-border bg-bg px-[18px] py-3.5 text-left text-sm font-medium text-fg3"
+                      >
+                        기타
+                      </button>
+                      {mergeOtherOpen ? (
+                        <div className="fade-in mt-1 flex flex-col gap-2">
+                          <textarea
+                            autoFocus
+                            value={mergeOtherText}
+                            onChange={(event) => setMergeOtherText(event.target.value)}
+                            rows={3}
+                            className="w-full rounded-[10px] border-[1.5px] border-accent bg-bg p-3 text-sm text-fg outline-none"
+                            placeholder="어떤 상황인지 적어 주세요 (다른 행사로 각각 남겨둡니다)..."
+                          />
+                          <button
+                            type="button"
+                            disabled={!mergeOtherText.trim()}
+                            onClick={() => answerMergeQuestion("different_event")}
+                            className="font-display self-end cursor-pointer rounded-[10px] bg-accent px-[18px] py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            확인
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-display mb-7 text-[20px] leading-snug font-bold text-fg">
+                      {`"${question.incomingEvent.event_name}"은(는) 매달 반복되는 일정으로 보여요. 이미 ${question.month}월에 ${question.existingCount}개 일정이 있어요. 추가할까요?`}
+                    </h2>
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => answerMergeQuestion("add")}
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-border bg-bg px-[18px] py-3.5 text-left text-sm font-medium text-fg"
+                      >
+                        네, 추가할게요
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => answerMergeQuestion("skip")}
+                        className="w-full cursor-pointer rounded-xl border-[1.5px] border-border bg-bg px-[18px] py-3.5 text-left text-sm font-medium text-fg"
+                      >
+                        아니요, 이미 있는 일정과 중복이에요
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <div className="mt-6 flex items-center gap-3">
+                  {mergeQuestionIndex > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMergeQuestionIndex((index) => Math.max(0, index - 1));
+                        setMergeOtherOpen(false);
+                        setMergeOtherText("");
+                      }}
+                      className="cursor-pointer border-0 bg-transparent p-0 text-[13px] text-fg3"
+                    >
+                      ← 이전 단계로
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          );
+        })() : null}
       </div>
     </div>
   );

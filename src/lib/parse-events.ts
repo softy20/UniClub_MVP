@@ -26,6 +26,11 @@
  * - mergeClubEvents(...groups): 여러 행사 목록을 하나로 합치는 메인 함수
  * - mergeSeasonEvents(existing, incoming, academicYear, today): 저장된 시즌 행사에 새로
  *   파싱한 행사를 안전하게 얹는 함수(같은 업로드 안 중복 제거와는 목적이 다름 — 아래 참고)
+ * - planSeasonMerge(...)/resolveSeasonMerge(plan, answers, ...): mergeSeasonEvents와 같은
+ *   원칙이지만, "이름 같고 달만 다른 행사"·"정기활동 같은 달 중복" 같은 애매한 경우를
+ *   questions로 빼서 사람이 답한 뒤(answers) 최종 목록을 만들 수 있게 한 버전. UI에서 확인
+ *   질문을 보여줘야 하면 이걸 쓰고, 확인 없이 바로 합쳐도 되면 mergeSeasonEvents를 쓴다
+ *   (mergeSeasonEvents는 내부적으로 planSeasonMerge + resolveSeasonMerge(빈 답변)이다).
  *
  * 💡 팁 및 주의사항:
  * - 이 파일의 로직은 문자열 유사도를 규칙(정규식, 접두사 비교 등)으로 판단하는 것이라 100% 정확하지 않을 수 있습니다. 새로운 접미사 패턴이 필요하면 PREP_SUFFIXES, TASK_TAILS 배열에 추가하세요.
@@ -306,34 +311,173 @@ function mergeExistingWithNewTasks(existingTasks: ClubTask[], incomingTasks: Clu
   return [...existingTasks, ...newTasks];
 }
 
+// 수영장 훈련, OW/AOW 강습처럼 매주/매달 반복되는 정기활동은 카테고리 이름만 보고는 알 수
+// 없다("정기"라는 말이 안 들어간 분류명도 많다 - 예: 다이빙 동아리의 OW/AOW). 대신 이미
+// 저장된 일정(existingEvents) 안에서 같은 핵심 이름이 서로 다른 달에 2번 이상 나온 적이
+// 있으면, 그 이름은 "반복되는 일정"이라고 판단한다. 처음 딱 한 번만 있었던 이름은(아직
+// 반복 여부를 알 수 없으니) month_mismatch 쪽으로 흘려보내 사람에게 직접 확인받고, 사람이
+// "다른 행사예요"라고 답하면 그때부터 달이 2개가 되어 다음 업로드부터는 자동으로 반복
+// 일정으로 인식된다.
+function isRecurringEventName(existingEvents: ClubEvent[], eventName: string): boolean {
+  const core = coreEventName(eventName);
+  const months = new Set(
+    existingEvents.filter((event) => coreEventName(event.event_name) === core).map((event) => event.target_month),
+  );
+  return months.size >= 2;
+}
+
+export type MonthMismatchQuestion = {
+  kind: "month_mismatch";
+  key: string;
+  existingEvent: ClubEvent;
+  incomingEvent: ClubEvent;
+};
+
+export type RecurringCountQuestion = {
+  kind: "recurring_count";
+  key: string;
+  month: number;
+  existingCount: number;
+  incomingEvent: ClubEvent;
+};
+
+export type SeasonMergeQuestion = MonthMismatchQuestion | RecurringCountQuestion;
+
+export type MonthMismatchAnswer = "same_event" | "different_event";
+export type RecurringCountAnswer = "add" | "skip";
+export type SeasonMergeAnswers = Record<string, MonthMismatchAnswer | RecurringCountAnswer>;
+
+export type SeasonMergePlan = {
+  /** 사람 확인 없이 바로 확정된 행사 목록(질문에 걸린 신규 행사는 아직 안 들어있음) */
+  autoEvents: ClubEvent[];
+  questions: SeasonMergeQuestion[];
+};
+
+function mergeIfNotPast(existing: ClubEvent, incoming: ClubEvent, academicYear: number, today: Date): ClubEvent {
+  const isPast = dayDiff(today, estimateEventDate(existing, academicYear)) < 0;
+  if (isPast) return existing;
+  return { ...existing, tasks: mergeExistingWithNewTasks(existing.tasks, incoming.tasks) };
+}
+
 /**
  * 이미 저장되어 있는 시즌 행사(existingEvents) 위에 새로 파싱한 행사(incomingEvents)를
- * 안전하게 얹는다. 기존 행사의 이름/날짜/월/장소/카테고리는 절대 바꾸지 않고, 이미 지난
- * 행사는 할 일도 손대지 않는다. 아직 안 지난 행사는 정말 새로 생긴 할 일만 추가하고,
- * 완전히 새로운 행사(예: 2학기에 추가된 부스 참여)는 그대로 목록에 더한다.
+ * 얹을 계획을 세운다. 기존 행사의 이름/날짜/월/장소/카테고리는 절대 바꾸지 않고, 이미 지난
+ * 행사는 할 일도 손대지 않는다. 아직 안 지난 행사는 정말 새로 생긴 할 일만 추가한다.
+ *
+ * 자동으로 판단하기 애매한 두 경우는 questions로 빼서 사람에게 확인받는다:
+ * - 이름은 완전히 같은데 달이 다른 행사(반복 일정으로 확인된 이름은 제외): 일정이 변경된
+ *   같은 행사인지, 진짜 다른 행사인지 확인 필요 (month_mismatch)
+ * - 반복 일정인데 같은 달에 이미 같은 이름의 일정이 있는 경우: 재추출 중복인지, 정말 그
+ *   달에 추가로 있는 일정인지 확인 필요 (recurring_count)
  */
+export function planSeasonMerge(
+  existingEvents: ClubEvent[],
+  incomingEvents: ClubEvent[],
+  academicYear: number,
+  today: Date,
+): SeasonMergePlan {
+  const usedIncoming = new Set<number>();
+
+  // 반복 일정으로 확인된 이름은 이름+월이 같아도 자동으로 같은 행사 취급(작업 병합)하지
+  // 않는다 - 한 달에 두 번 있는 세션이 하나로 뭉개져 사라지는 걸 막기 위해, 대신 아래
+  // recurring_count 질문으로 사람에게 확인받는다.
+  const merged = existingEvents.map((existing) => {
+    if (isRecurringEventName(existingEvents, existing.event_name)) return existing;
+    const matchIndex = incomingEvents.findIndex(
+      (candidate, index) =>
+        !usedIncoming.has(index) &&
+        !isRecurringEventName(existingEvents, candidate.event_name) &&
+        isSameEvent(existing, candidate),
+    );
+    if (matchIndex < 0) return existing;
+    usedIncoming.add(matchIndex);
+    return mergeIfNotPast(existing, incomingEvents[matchIndex], academicYear, today);
+  });
+
+  const questions: SeasonMergeQuestion[] = [];
+  const autoNew: ClubEvent[] = [];
+
+  incomingEvents.forEach((incoming, index) => {
+    if (usedIncoming.has(index)) return;
+    const incomingCore = coreEventName(incoming.event_name);
+
+    if (isRecurringEventName(existingEvents, incoming.event_name)) {
+      const sameMonthExisting = existingEvents.filter(
+        (existing) => existing.target_month === incoming.target_month && coreEventName(existing.event_name) === incomingCore,
+      );
+      if (sameMonthExisting.length > 0) {
+        questions.push({
+          kind: "recurring_count",
+          key: `recurring:${incomingCore}:${incoming.target_month}:${index}`,
+          month: incoming.target_month,
+          existingCount: sameMonthExisting.length,
+          incomingEvent: incoming,
+        });
+        return;
+      }
+      autoNew.push(incoming);
+      return;
+    }
+
+    const sameNameOtherMonth = existingEvents.find(
+      (existing) => existing.target_month !== incoming.target_month && coreEventName(existing.event_name) === incomingCore,
+    );
+    if (sameNameOtherMonth) {
+      questions.push({
+        kind: "month_mismatch",
+        key: `mismatch:${sameNameOtherMonth.event_id}:${index}`,
+        existingEvent: sameNameOtherMonth,
+        incomingEvent: incoming,
+      });
+      return;
+    }
+
+    autoNew.push(incoming);
+  });
+
+  return { autoEvents: [...merged, ...autoNew], questions };
+}
+
+/**
+ * planSeasonMerge가 만든 계획에 사람의 답변을 반영해 최종 행사 목록을 만든다. 답이 없는
+ * 질문은 안전한 기본값(같은 행사로 단정하지 않고 따로 추가/정기활동은 그대로 추가)으로
+ * 처리해서, 데이터가 사라지는 쪽보다 중복이 생기는 쪽을 택한다.
+ */
+export function resolveSeasonMerge(
+  plan: SeasonMergePlan,
+  answers: SeasonMergeAnswers,
+  academicYear: number,
+  today: Date,
+): ClubEvent[] {
+  const events = [...plan.autoEvents];
+
+  for (const question of plan.questions) {
+    if (question.kind === "month_mismatch") {
+      const answer = answers[question.key] ?? "different_event";
+      if (answer === "different_event") {
+        events.push(question.incomingEvent);
+        continue;
+      }
+      const index = events.findIndex((event) => event.event_id === question.existingEvent.event_id);
+      if (index >= 0) {
+        events[index] = mergeIfNotPast(events[index], question.incomingEvent, academicYear, today);
+      }
+      continue;
+    }
+
+    const answer = answers[question.key] ?? "add";
+    if (answer === "add") events.push(question.incomingEvent);
+  }
+
+  return events;
+}
+
 export function mergeSeasonEvents(
   existingEvents: ClubEvent[],
   incomingEvents: ClubEvent[],
   academicYear: number,
   today: Date,
 ): ClubEvent[] {
-  const usedIncoming = new Set<number>();
-
-  const merged = existingEvents.map((existing) => {
-    const matchIndex = incomingEvents.findIndex(
-      (candidate, index) => !usedIncoming.has(index) && isSameEvent(existing, candidate),
-    );
-    if (matchIndex < 0) return existing;
-
-    usedIncoming.add(matchIndex);
-    const isPast = dayDiff(today, estimateEventDate(existing, academicYear)) < 0;
-    if (isPast) return existing;
-
-    const candidate = incomingEvents[matchIndex];
-    return { ...existing, tasks: mergeExistingWithNewTasks(existing.tasks, candidate.tasks) };
-  });
-
-  const newEvents = incomingEvents.filter((_, index) => !usedIncoming.has(index));
-  return [...merged, ...newEvents];
+  const plan = planSeasonMerge(existingEvents, incomingEvents, academicYear, today);
+  return resolveSeasonMerge(plan, {}, academicYear, today);
 }
