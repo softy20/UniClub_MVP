@@ -70,7 +70,9 @@ type AppProps = {
 
 export default function App({ onSignOut, isGuest = false, userEmail = null }: AppProps) {
   const clock = useKstNow();
-  const [page, setPage] = useState<AppPage>("dashboard");
+  // 게스트는 저장된 데이터가 없는 채로 시작하므로, 텅 빈 대시보드 대신 곧바로
+  // AI 일정 추출(샘플 체험 또는 직접 업로드) 화면으로 보낸다.
+  const [page, setPage] = useState<AppPage>(isGuest ? "manual" : "dashboard");
   const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed, {
     guest: isGuest,
   });
