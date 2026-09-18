@@ -33,6 +33,7 @@
  */
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
+import App from "./App";
 import { AuthGate } from "./components/AuthGate";
 import { ClubGate } from "./components/ClubGate";
 import { useAuth } from "./hooks/useAuth";
@@ -44,7 +45,7 @@ function Root() {
 
   if (loading) return null;
   if (session) {
-    return <App onSignOut={signOut} userEmail={session.user.email ?? null} />;
+    return <ClubGate session={session} onSignOut={signOut} />;
   }
   if (guest) {
     return <App isGuest onSignOut={() => setGuest(false)} />;

@@ -64,26 +64,43 @@ import type { ClubData, ClubSummary } from "./lib/types";
 const seed = club as ClubData;
 
 type AppProps = {
-  clubId: string;
-  clubs: ClubSummary[];
-  accessToken: string;
-  onSwitchClub: (clubId: string) => void;
-  onCreateClub: (name: string) => Promise<string>;
-  onCreateInvite: (clubId: string) => Promise<string>;
+  // 실 로그인 사용자는 ClubGate가 이 값들을 채워서 내려준다. 게스트는 동아리 개념이 없으니
+  // 전부 비워두고, 아래에서 고정된 게스트용 값으로 대체한다.
+  clubId?: string;
+  clubs?: ClubSummary[];
+  accessToken?: string;
+  onSwitchClub?: (clubId: string) => void;
+  onCreateClub?: (name: string) => Promise<string>;
+  onCreateInvite?: (clubId: string) => Promise<string>;
   onSignOut: () => void;
   isGuest?: boolean;
   userEmail?: string | null;
 };
 
-export default function App({ onSignOut, isGuest = false, userEmail = null }: AppProps) {
+const GUEST_CLUB_ID = "guest";
+
+export default function App({
+  clubId = GUEST_CLUB_ID,
+  clubs = [],
+  accessToken = "",
+  onSwitchClub,
+  onCreateClub,
+  onCreateInvite,
+  onSignOut,
+  isGuest = false,
+  userEmail = null,
+}: AppProps) {
   const clock = useKstNow();
   // 게스트는 저장된 데이터가 없는 채로 시작하므로, 텅 빈 대시보드 대신 곧바로
   // AI 일정 추출(샘플 체험 또는 직접 업로드) 화면으로 보낸다.
   const [page, setPage] = useState<AppPage>(isGuest ? "manual" : "dashboard");
-  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed, {
-    guest: isGuest,
-  });
-    
+  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(
+    seed,
+    clubId,
+    accessToken,
+    { guest: isGuest },
+  );
+
   const academicYear = data.club_info.academic_year;
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds(clubId, academicYear));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -161,13 +178,15 @@ export default function App({ onSignOut, isGuest = false, userEmail = null }: Ap
           <div>
             <h1 className="font-display text-lg font-bold text-fg">{PAGE_LABEL[page]}</h1>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <ClubSwitcher
-                clubs={clubs}
-                activeClubId={clubId}
-                onSwitch={onSwitchClub}
-                onCreateClub={onCreateClub}
-                onCreateInvite={onCreateInvite}
-              />
+              {!isGuest && onSwitchClub && onCreateClub && onCreateInvite ? (
+                <ClubSwitcher
+                  clubs={clubs}
+                  activeClubId={clubId}
+                  onSwitch={onSwitchClub}
+                  onCreateClub={onCreateClub}
+                  onCreateInvite={onCreateInvite}
+                />
+              ) : null}
               <SeasonSwitcher
                 clubName={data.club_info.club_name}
                 activeYear={academicYear}

@@ -78,8 +78,9 @@ async function persistClubData(clubId: string, accessToken: string, data: ClubDa
 
 
 // 게스트(비로그인 둘러보기) 모드에서는 서버 대신 브라우저 localStorage(guest-store)를 쓴다.
-// 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓴다.
-export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
+// 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓰고, clubId/accessToken도
+// 필요 없다(둘 다 실제 로그인 사용자 전용 — 게스트는 빈 문자열을 넘긴다).
+export function useClubData(seed: ClubData, clubId: string, accessToken: string, options?: { guest?: boolean }) {
   const guest = options?.guest ?? false;
   // 게스트는 데모 시드(오션홀릭)를 초기값으로 보여주지 않는다 — 그걸 existingData로 쓰면
   // 게스트가 올린 매뉴얼과 데모 데이터가 한 목록에 섞여 추출된다. 진짜 빈 상태로 시작해서,
@@ -91,12 +92,17 @@ export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    const load = guest ? Promise.resolve(fetchGuestClubData()) : fetchClubData();
+    const load = guest ? Promise.resolve(fetchGuestClubData()) : fetchClubData(clubId, accessToken);
     load
       .then((res) => {
         if (cancelled) return;
-        setData(res.data ?? seed);
-        setSeasons(res.seasons.length > 0 ? res.seasons : [seed.club_info.academic_year]);
+        // 게스트는 저장된 게 없으면(res.data === null) 데모 시드로 되돌아가면 안 된다 —
+        // 그러면 emptyClubData로 시작한 의미가 fetch가 끝나는 순간 사라져서 다시
+        // 오션홀릭 데이터가 existingData로 잡히는 버그가 재발한다.
+        if (res.data) setData(res.data);
+        else if (!guest) setData(seed);
+        if (res.seasons.length > 0) setSeasons(res.seasons);
+        else if (!guest) setSeasons([seed.club_info.academic_year]);
       })
       .catch((error) => {
         console.error("클럽 데이터 조회 실패", error);
@@ -107,18 +113,18 @@ export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [guest]);
+  }, [guest, clubId, accessToken]);
 
   function rememberSeason(year: number) {
     setSeasons((prev) => (prev.includes(year) ? prev : [...prev, year].sort((a, b) => a - b)));
   }
-  
+
   function savePersisted(next: ClubData) {
     if (guest) {
       persistGuestClubData(next);
       return;
     }
-    persistClubData(next).catch((error) => {
+    persistClubData(clubId, accessToken, next).catch((error) => {
       console.error("클럽 데이터 저장 실패", error);
     });
   }
@@ -143,7 +149,7 @@ export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
 
   function switchSeason(year: number) {
     setLoading(true);
-    const load = guest ? Promise.resolve(fetchGuestClubData(year)) : fetchClubData(year);
+    const load = guest ? Promise.resolve(fetchGuestClubData(year)) : fetchClubData(clubId, accessToken, year);
     load
       .then((res) => {
         if (res.data) setData(res.data);
