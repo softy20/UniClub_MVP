@@ -11,7 +11,7 @@
  * - 가장 가까운 다가오는 행사(upcoming event) 찾기
  * - 날짜를 "3월 4일 화" 같은 한국어 문자열로 포맷
  * - D-Day 텍스트("D-3", "오늘", "지연 2일" 등) 계산
- * - 완료한 할 일 id 목록을 브라우저 localStorage에 저장/불러오기
+ * - 완료한 할 일 id 목록을 동아리+학년도별로 브라우저 localStorage에 저장/불러오기
  *
  * 🔗 사용 예시:
  * ```ts
@@ -26,10 +26,12 @@
  * - dayDiff, toDateInputValue, estimateEventDate, estimateGiftDate: 날짜 계산 함수들
  * - buildBoard(data, today?): 이번 주/다음 주 할 일과 다가오는 행사를 묶어서 반환
  * - formatDate, formatRange, taskDdayLabel: 화면에 보여줄 문자열을 만드는 함수들
- * - loadDoneIds, saveDoneIds: 완료 체크 상태를 브라우저에 저장하는 함수들 (STORAGE_KEY: "uniclub-done-v1")
+ * - loadDoneIds(clubId, academicYear), saveDoneIds(clubId, academicYear, ids): 완료 체크 상태를
+ *   동아리+학년도별로 나눠서 브라우저에 저장하는 함수들 (키: "uniclub-done-v1:{clubId}:{academicYear}")
  *
  * 💡 팁 및 주의사항:
  * - loadDoneIds/saveDoneIds는 브라우저의 localStorage를 직접 건드리는 부수효과(side effect)가 있습니다. 서버 환경(SSR)에서는 쓸 수 없습니다.
+ * - 완료 체크를 동아리+학년도별로 나누는 이유: 동아리를 바꾸거나 시즌을 전환해도 다른 동아리/해의 체크가 섞여 보이면 안 되기 때문입니다.
  * - 날짜 계산은 항상 정오(12시) 기준으로 맞춰서(atNoon), 시간대 차이로 날짜가 하루씩 밀리는 문제를 방지합니다.
  * - buildBoard의 today 기본값은 한국 시간(KST) 기준 오늘 날짜(readKst().civil)입니다.
  *
@@ -150,6 +152,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
         eventId: event.event_id,
         eventDate,
         dueDate,
+        daysBefore: task.days_before_dday,
         role: task.assigned_role,
         mandatory: task.is_mandatory,
         details: task.action_details,
@@ -168,6 +171,7 @@ function flattenTasks(data: ClubData): BoardTask[] {
       eventId: `gift-${index}`,
       eventDate,
       dueDate,
+      daysBefore: 14,
       role: "총무",
       mandatory: true,
       details: [
@@ -257,11 +261,14 @@ export function taskDdayLabel(dueDate: Date, today: Date = readKst().civil): { t
   return { text: `D-${days}`, tone: "later" };
 }
 
-const STORAGE_KEY = "uniclub-done-v1";
+const STORAGE_KEY_PREFIX = "uniclub-done-v1";
 
-export function loadDoneIds(): Set<string> {
+// 완료 체크는 동아리 + 학년도(시즌)별로 따로 저장한다. clubId를 넘겨받지 않으면 다른
+// 동아리의 체크가 섞이고, 학년도를 넘겨받지 않으면 다른 해의 체크가 새 시즌으로
+// 잘못 넘어오는 문제가 생긴다.
+export function loadDoneIds(clubId: string, academicYear: number): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}:${clubId}:${academicYear}`);
     if (!raw) return new Set();
     return new Set(JSON.parse(raw) as string[]);
   } catch {
@@ -269,6 +276,6 @@ export function loadDoneIds(): Set<string> {
   }
 }
 
-export function saveDoneIds(ids: Set<string>): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+export function saveDoneIds(clubId: string, academicYear: number, ids: Set<string>): void {
+  localStorage.setItem(`${STORAGE_KEY_PREFIX}:${clubId}:${academicYear}`, JSON.stringify([...ids]));
 }

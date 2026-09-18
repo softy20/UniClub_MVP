@@ -24,11 +24,15 @@
  * 🎯 주요 관리 요소:
  * - ClubEventPatch: 행사를 어떻게 수정할지 담는 "수정 지시서" 타입
  * - patchClubEvent(data, eventId, patch): 실제로 데이터를 수정해서 새 ClubData를 반환하는 함수
+ * - buildSeasonTemplate(data, newYear): 지금 시즌 데이터를 새 학년도용 빈 템플릿으로 복사하는 함수
  *
  * 💡 팁 및 주의사항:
  * - patchClubEvent는 원본 data를 절대 바꾸지 않고(불변성 유지), 항상 새로운 객체를 만들어서 반환합니다. React 상태 관리와 잘 맞습니다.
  * - eventId와 일치하는 행사가 없으면 아무것도 바뀌지 않은 채 원본과 같은 내용의 새 객체가 반환됩니다.
  * - 새 할 일의 id는 newTaskId()가 crypto.randomUUID()로 "draft-..." 형태로 만듭니다.
+ * - buildSeasonTemplate은 행사/할 일 구성(역할, D-Day 역산 등)은 그대로 이어받고, 그 해에만
+ *   의미 있는 실제 날짜(event_date)는 지웁니다. 완료 체크는 ClubData에 저장되지 않고
+ *   학년도별 localStorage(board.ts의 loadDoneIds)에 따로 있어서 새 시즌은 자동으로 빈 상태로 시작합니다.
  *
  * @file club-store.ts
  * @module lib/club-store
@@ -122,5 +126,14 @@ export function patchClubEvent(data: ClubData, eventId: string, patch: ClubEvent
       }
       return next;
     }),
+  };
+}
+
+/** 지금 시즌 데이터를 새 학년도(newYear) 템플릿으로 복사한다. 행사/할 일 구성은 유지하고, 실제 날짜만 비운다. */
+export function buildSeasonTemplate(data: ClubData, newYear: number): ClubData {
+  return {
+    ...data,
+    club_info: { ...data.club_info, academic_year: newYear },
+    events: data.events.map(({ event_date: _eventDate, ...event }) => event),
   };
 }

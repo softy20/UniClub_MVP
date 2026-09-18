@@ -39,7 +39,9 @@
  * 💡 팁 및 주의사항:
  * - resetKey 값이 바뀌면 펼침/접힘, 수정 모드 등 화면 상태가 전부 초기화됩니다(다른 화면으로
  *   이동했다가 돌아왔을 때 깨끗한 상태로 보여주기 위함).
- * - D-Day 입력은 "D-7", "7" 처럼 숫자만 뽑아서 해석하며, 숫자가 아니면 무시됩니다.
+ * - 마감 입력은 "D-7", "7" 처럼 숫자만 뽑아서 해석하며, 숫자가 아니면 무시됩니다. 이 숫자는
+ *   "행사 며칠 전까지 끝내야 하는지"(daysBefore)를 저장하는 값이고, 배지도 같은 값을 "행사 N일 전"
+ *   문구로 보여줍니다(TaskDueBadge). daysLeft(오늘 기준 남은 일수)는 배지 점 색으로만 씁니다.
  * - 이 파일은 화면 두 군데(TasksPage, ManualPreview)에서 함께 쓰므로, 수정할 때 두 화면
  *   모두에 영향이 갑니다.
  *
@@ -50,7 +52,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { CaretDown } from "@phosphor-icons/react";
 import type { ClubEventPatch } from "../lib/club-store";
 import { groupByRole } from "../lib/ops";
-import { DdayBadge, RoleChip, RoleSelect, Tag } from "./marks";
+import { RoleChip, RoleSelect, Tag, TaskDueBadge } from "./marks";
 
 export type RoleTodoItem = {
   id: string;
@@ -58,7 +60,10 @@ export type RoleTodoItem = {
   text: string;
   done: boolean;
   role: string;
+  /** 행사일 며칠 전까지 끝내야 하는지(저장되는 값, 수정 입력에 쓰임). */
   daysBefore: number;
+  /** 오늘 기준 이 할 일의 실제 마감까지 남은 일수(배지 표시에 쓰임). */
+  daysLeft: number;
   eventTitle?: string;
   category?: string;
   editable?: boolean;
@@ -622,10 +627,10 @@ function TodoRow({
       <span
         className="size-[7px] shrink-0 rounded-full"
         style={{
-          background: Number(ddayDraft) <= 1 ? "#ef4444" : Number(ddayDraft) <= 7 ? "#eab308" : "#22c55e",
+          background: item.daysLeft < 0 ? "#94a3b8" : item.daysLeft <= 1 ? "#ef4444" : item.daysLeft <= 7 ? "#eab308" : "#22c55e",
         }}
       />
-      <span>D-</span>
+      <span>행사</span>
       <input
         autoFocus
         inputMode="numeric"
@@ -637,21 +642,22 @@ function TodoRow({
         }}
         onBlur={onSaveDday}
         className="tabular h-5 w-9 rounded-md border border-accent bg-bg px-1 text-[13px] leading-5 font-semibold text-fg outline-none"
-        aria-label={`${item.text} D-Day`}
+        aria-label={`${item.text} 마감(행사 기준 며칠 전)`}
       />
+      <span>일 전</span>
     </div>
   ) : showChrome ? (
     <button
       type="button"
       onClick={onStartDday}
-      aria-label={`${item.text} D-Day 수정`}
+      aria-label={`${item.text} 마감 수정`}
       className="flex h-5 shrink-0 cursor-pointer items-center border-0 bg-transparent p-0"
     >
-      <DdayBadge dday={`D-${item.daysBefore}`} />
+      <TaskDueBadge daysBefore={item.daysBefore} daysLeft={item.daysLeft} />
     </button>
   ) : (
     <span className="flex h-5 shrink-0 items-center">
-      <DdayBadge dday={`D-${item.daysBefore}`} />
+      <TaskDueBadge daysBefore={item.daysBefore} daysLeft={item.daysLeft} />
     </span>
   );
 

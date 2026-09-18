@@ -5,9 +5,9 @@
  * 전체 행사 수, 완료된 할 일 개수, 임박한 행사, 전체 행사 목록을 정리해서 보여줍니다.
  *
  * 📌 주요 기능:
- * - 전체 행사 수 / 완료 태스크 비율 / D-7 이내 임박 행사 수 / 임원 수를 카드 형태 통계로 표시
- * - D-7 이내로 다가온 "긴급 행사" 목록을 남은 일수 순으로 정렬해서 보여줌
- * - 각 임박 행사의 체크리스트 진행률과 아직 안 끝난 할 일 일부를 미리보기로 표시
+ * - 전체 행사 수 / 완료 태스크 비율 / D-7 이내 임박 할 일 수 / 임원 수를 카드 형태 통계로 표시
+ * - 마감(daysLeft)이 D-7 이내로 다가온 "긴급 할 일" 목록을 마감이 급한 순서로 정렬해서 보여줌
+ * - 각 긴급 할 일을 누르면 그 할 일이 속한 행사의 상세 패널을 열 수 있음
  * - 전체 행사를 날짜순 표 형태로 정리해서 보여주고, 행을 클릭하면 상세 패널을 열 수 있음
  *
  * 🔗 사용 예시:
@@ -29,7 +29,7 @@
  * @module components/DashboardPage
  */
 import type { OpsEvent } from "../lib/ops";
-import { DdayBadge, Tag } from "./marks";
+import { DdayBadge, Tag, TaskDueBadge } from "./marks";
 
 type DashboardPageProps = {
   events: OpsEvent[];
@@ -37,9 +37,29 @@ type DashboardPageProps = {
   onSelect: (event: OpsEvent) => void;
 };
 
+type UrgentTodo = {
+  id: string;
+  text: string;
+  daysBefore: number;
+  daysLeft: number;
+  role: string;
+  event: OpsEvent;
+};
+
 export function DashboardPage({ events, officerCount, onSelect }: DashboardPageProps) {
-  const urgent = events
-    .filter((event) => event.daysLeft >= 0 && event.daysLeft <= 7)
+  const urgentTodos: UrgentTodo[] = events
+    .flatMap((event) =>
+      event.checklist
+        .filter((item) => !item.done && item.daysLeft >= 0 && item.daysLeft <= 7)
+        .map((item) => ({
+          id: item.id,
+          text: item.text,
+          daysBefore: item.daysBefore,
+          daysLeft: item.daysLeft,
+          role: item.role,
+          event,
+        })),
+    )
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
   const totalTasks = events.reduce((sum, event) => sum + event.checklist.length, 0);
@@ -49,7 +69,7 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
   const stats = [
     { label: "전체 행사", value: String(events.length), sub: "이번 학년도", color: "#6366f1" },
     { label: "완료 태스크", value: `${doneTasks}/${totalTasks}`, sub: `전체 ${overallPct}%`, color: "#22c55e" },
-    { label: "D-7 이내", value: String(urgent.length), sub: "긴급 처리 필요", color: "#ef4444" },
+    { label: "D-7 이내", value: String(urgentTodos.length), sub: "긴급 할 일", color: "#ef4444" },
     { label: "임원 수", value: `${officerCount}명`, sub: "역할 기준", color: "#f97316" },
   ];
 
@@ -70,58 +90,30 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
       <div className="mb-8">
         <p className="mb-4 flex items-center gap-2 text-[12px] tracking-widest text-fg3 uppercase">
           <span className="pulse-dot inline-block size-1.5 rounded-full bg-red-500" />
-          D-7 긴급 행사
+          D-7 긴급 할 일
         </p>
         <div className="flex flex-col gap-2">
-          {urgent.map((event) => {
-            const done = event.checklist.filter((item) => item.done).length;
-            const pct = event.checklist.length === 0 ? 0 : Math.round((done / event.checklist.length) * 100);
-            const remaining = event.checklist.filter((item) => !item.done);
-            return (
-              <button
-                key={event.id}
-                type="button"
-                onClick={() => onSelect(event)}
-                className="cursor-pointer rounded-xl border border-border bg-card p-4 text-left transition-all hover:scale-[1.01]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      <DdayBadge dday={event.dday} />
-                      <Tag cat={event.category} />
-                    </div>
-                    <p className="font-display font-semibold text-fg">{event.title}</p>
-                    <p className="mt-1 text-xs text-fg3">
-                      {event.date.getMonth() + 1}월 {event.date.getDate()}일
-                      {event.location ? ` · ${event.location}` : ""}
-                    </p>
-                    {remaining.length > 0 ? (
-                      <div className="mt-2 flex flex-col gap-1">
-                        {remaining.slice(0, 2).map((item) => (
-                          <p key={item.id} className="flex items-center gap-1.5 text-xs text-fg2">
-                            <span className="text-[#ef4444]">○</span> {item.text}
-                          </p>
-                        ))}
-                        {remaining.length > 2 ? <p className="text-xs text-fg3">+{remaining.length - 2}개 남음</p> : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="mb-1 text-xs text-fg3">{pct}%</div>
-                    <div className="h-1 w-16 rounded-full bg-border2">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, background: pct === 100 ? "#22c55e" : "#6366f1" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-          {urgent.length === 0 ? (
+          {urgentTodos.map((todo) => (
+            <button
+              key={todo.id}
+              type="button"
+              onClick={() => onSelect(todo.event)}
+              className="cursor-pointer rounded-xl border border-border bg-card p-4 text-left transition-all hover:scale-[1.01]"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <TaskDueBadge daysBefore={todo.daysBefore} daysLeft={todo.daysLeft} />
+                <Tag cat={todo.event.category} />
+              </div>
+              <p className="font-display font-semibold text-fg">{todo.text}</p>
+              <p className="mt-1 text-xs text-fg3">
+                {todo.event.title}
+                {todo.role ? ` · ${todo.role}` : ""}
+              </p>
+            </button>
+          ))}
+          {urgentTodos.length === 0 ? (
             <div className="rounded-xl border border-border bg-card p-6 text-center">
-              <p className="font-display text-sm text-fg3">D-7 이내 긴급 행사 없음</p>
+              <p className="font-display text-sm text-fg3">D-7 이내 긴급 할 일 없음</p>
             </div>
           ) : null}
         </div>
