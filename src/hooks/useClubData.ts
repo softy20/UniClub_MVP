@@ -44,7 +44,7 @@
  */
 import { useEffect, useState } from "react";
 import { buildSeasonTemplate, patchClubEvent, type ClubEventPatch } from "../lib/club-store";
-import { fetchGuestClubData, persistGuestClubData } from "../lib/guest-store";
+import { emptyClubData, fetchGuestClubData, persistGuestClubData } from "../lib/guest-store";
 import type { ClubData } from "../lib/types";
 
 const CLUB_DATA_ENDPOINT = "/.netlify/functions/club-data";
@@ -71,8 +71,12 @@ async function persistClubData(data: ClubData): Promise<void> {
 // 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓴다.
 export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
   const guest = options?.guest ?? false;
-  const [data, setData] = useState<ClubData>(seed);
-  const [seasons, setSeasons] = useState<number[]>([seed.club_info.academic_year]);
+  // 게스트는 데모 시드(오션홀릭)를 초기값으로 보여주지 않는다 — 그걸 existingData로 쓰면
+  // 게스트가 올린 매뉴얼과 데모 데이터가 한 목록에 섞여 추출된다. 진짜 빈 상태로 시작해서,
+  // 게스트가 뭔가 추출/저장하기 전까지는 seasons도 비어 있게 둔다(App.tsx의
+  // `seasons.length > 0 ? data : null` 가드가 정확히 동작하도록).
+  const [data, setData] = useState<ClubData>(() => (guest ? emptyClubData(seed.club_info.academic_year) : seed));
+  const [seasons, setSeasons] = useState<number[]>(guest ? [] : [seed.club_info.academic_year]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

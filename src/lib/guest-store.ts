@@ -20,6 +20,18 @@ import type { ClubData } from "./types";
 
 const STORAGE_KEY = "uniclub-guest-data-v1";
 
+// 게스트가 아직 아무것도 추출/저장하지 않았을 때 쓰는 빈 데이터.
+// 데모 시드(club.json, "오션홀릭")를 대신 보여주면 AI 추출 시 existingData로 넘어가서
+// 게스트가 올린 매뉴얼과 데모 데이터가 섞여 추출되는 문제가 생긴다(예: 스쿠버 동아리
+// 데모 행사 + 코딩 동아리 실제 행사가 한 목록에 같이 나옴). 그래서 게스트 초기 상태는
+// 진짜로 빈 ClubData여야 한다.
+export function emptyClubData(academicYear = new Date().getFullYear()): ClubData {
+  return {
+    club_info: { club_name: "게스트 체험", academic_year: academicYear, roles: [] },
+    events: [],
+  };
+}
+
 type GuestClubDataResponse = { ok: true; data: ClubData | null; seasons: number[] };
 
 type GuestBucket = Record<string, ClubData>;
