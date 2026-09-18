@@ -157,6 +157,7 @@ export function ClubGate({ session, onSignOut }: ClubGateProps) {
       onCreateClub={createClub}
       onCreateInvite={createInvite}
       onSignOut={onSignOut}
+      userEmail={session.user.email ?? null}
     />
   );
 }
