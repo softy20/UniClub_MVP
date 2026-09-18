@@ -85,7 +85,7 @@ export function EventPanel({
   const todoItems = useMemo(
     () =>
       [...event.checklist]
-        .sort((a, b) => a.daysBefore - b.daysBefore)
+        .sort((a, b) => a.daysLeft - b.daysLeft)
         .map((item) => ({
           ...item,
           eventId: event.id,

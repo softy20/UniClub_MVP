@@ -33,6 +33,9 @@
  * - categoryStyle은 미리 정해진 키워드(정규식)에 안 걸리면, 글자를 숫자로 바꿔서(해시) 팔레트 중 하나를 무작위처럼 고정 배정합니다. 같은 이름은 항상 같은 색이 나옵니다.
  * - buildOpsEvents는 calendar.ts의 buildCalendarEvents와 board.ts의 dayDiff에 의존합니다.
  * - done(Set<string>)에 들어있는 id와 체크리스트 항목 id가 일치해야 완료 표시가 됩니다.
+ * - OpsCheck의 daysBefore는 "행사 며칠 전까지 끝내야 하는지"를 나타내는 고정값(저장/수정용)이고,
+ *   daysLeft는 오늘 날짜 기준으로 그 마감일까지 실제로 며칠 남았는지를 계산한 값(배지 표시용)입니다.
+ *   당일에 하는 할 일(daysBefore=0)이어도 행사일이 먼 미래면 daysLeft는 큰 값이 됩니다.
  *
  * @file ops.ts
  * @module lib/ops
@@ -95,6 +98,7 @@ export type OpsCheck = {
   text: string;
   done: boolean;
   daysBefore: number;
+  daysLeft: number;
   role: string;
 };
 
@@ -154,11 +158,18 @@ export function buildOpsEvents(data: ClubData, today: Date, done: Set<string>): 
     const daysLeft = dayDiff(today, item.date);
     const checklist: OpsCheck[] = (source?.tasks ?? []).map((task, index) => {
       const id = task.task_id ?? `${item.id}-${index}`;
+      const dueDate = new Date(
+        item.date.getFullYear(),
+        item.date.getMonth(),
+        item.date.getDate() - task.days_before_dday,
+        12,
+      );
       return {
         id,
         text: task.task_name,
         done: done.has(id),
         daysBefore: task.days_before_dday,
+        daysLeft: dayDiff(today, dueDate),
         role: task.assigned_role.trim() || "공통",
       };
     });

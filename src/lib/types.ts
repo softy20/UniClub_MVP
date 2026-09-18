@@ -110,6 +110,13 @@ export type ClubData = {
   }[];
 };
 
+/** 로그인한 사용자가 속한 동아리 하나(계정 <-> 동아리 N:M 관계의 한 행). */
+export type ClubSummary = {
+  id: string;
+  name: string;
+  role: "owner" | "member";
+};
+
 export type BoardTask = {
   id: string;
   name: string;
@@ -117,6 +124,8 @@ export type BoardTask = {
   eventId: string;
   eventDate: Date;
   dueDate: Date;
+  /** 행사일 며칠 전까지 끝내야 하는지(행사 기준 고정값). 오늘 기준 남은 일수는 dueDate에서 따로 계산한다. */
+  daysBefore: number;
   role: string;
   mandatory: boolean;
   details?: string;
