@@ -47,6 +47,7 @@
  */
 import { useEffect, useState } from "react";
 import { buildSeasonTemplate, patchClubEvent, type ClubEventPatch } from "../lib/club-store";
+import { emptyClubData, fetchGuestClubData, persistGuestClubData } from "../lib/guest-store";
 import type { ClubData } from "../lib/types";
 
 const CLUB_DATA_ENDPOINT = "/.netlify/functions/club-data";
@@ -75,15 +76,23 @@ async function persistClubData(clubId: string, accessToken: string, data: ClubDa
   if (!response.ok) throw new Error(`클럽 데이터 저장 실패 (${response.status})`);
 }
 
-export function useClubData(seed: ClubData, clubId: string, accessToken: string) {
-  const [data, setData] = useState<ClubData>(seed);
-  const [seasons, setSeasons] = useState<number[]>([seed.club_info.academic_year]);
+
+// 게스트(비로그인 둘러보기) 모드에서는 서버 대신 브라우저 localStorage(guest-store)를 쓴다.
+// 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓴다.
+export function useClubData(seed: ClubData, options?: { guest?: boolean }) {
+  const guest = options?.guest ?? false;
+  // 게스트는 데모 시드(오션홀릭)를 초기값으로 보여주지 않는다 — 그걸 existingData로 쓰면
+  // 게스트가 올린 매뉴얼과 데모 데이터가 한 목록에 섞여 추출된다. 진짜 빈 상태로 시작해서,
+  // 게스트가 뭔가 추출/저장하기 전까지는 seasons도 비어 있게 둔다(App.tsx의
+  // `seasons.length > 0 ? data : null` 가드가 정확히 동작하도록).
+  const [data, setData] = useState<ClubData>(() => (guest ? emptyClubData(seed.club_info.academic_year) : seed));
+  const [seasons, setSeasons] = useState<number[]>(guest ? [] : [seed.club_info.academic_year]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    fetchClubData(clubId, accessToken)
+    const load = guest ? Promise.resolve(fetchGuestClubData()) : fetchClubData();
+    load
       .then((res) => {
         if (cancelled) return;
         setData(res.data ?? seed);
@@ -98,19 +107,26 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string)
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubId, accessToken]);
+  }, [guest]);
 
   function rememberSeason(year: number) {
     setSeasons((prev) => (prev.includes(year) ? prev : [...prev, year].sort((a, b) => a - b)));
+  }
+  
+  function savePersisted(next: ClubData) {
+    if (guest) {
+      persistGuestClubData(next);
+      return;
+    }
+    persistClubData(next).catch((error) => {
+      console.error("클럽 데이터 저장 실패", error);
+    });
   }
 
   function persist(next: ClubData) {
     setData(next);
     rememberSeason(next.club_info.academic_year);
-    persistClubData(clubId, accessToken, next).catch((error) => {
-      console.error("클럽 데이터 저장 실패", error);
-    });
+    savePersisted(next);
   }
 
   function applyClubData(next: ClubData) {
@@ -120,16 +136,15 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string)
   function patchEvent(eventId: string, patch: ClubEventPatch) {
     setData((prev) => {
       const next = patchClubEvent(prev, eventId, patch);
-      persistClubData(clubId, accessToken, next).catch((error) => {
-        console.error("클럽 데이터 저장 실패", error);
-      });
+      savePersisted(next);
       return next;
     });
   }
 
   function switchSeason(year: number) {
     setLoading(true);
-    fetchClubData(clubId, accessToken, year)
+    const load = guest ? Promise.resolve(fetchGuestClubData(year)) : fetchClubData(year);
+    load
       .then((res) => {
         if (res.data) setData(res.data);
         if (res.seasons.length > 0) setSeasons(res.seasons);

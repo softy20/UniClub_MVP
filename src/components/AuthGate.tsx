@@ -43,9 +43,10 @@ type AuthGateProps = {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
   onSignInWithGoogle: () => Promise<void>;
+  onGuestMode: () => void;
 };
 
-export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle }: AuthGateProps) {
+export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }: AuthGateProps) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -158,6 +159,22 @@ export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle }: AuthGatePro
         >
           {mode === "signin" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
         </button>
+
+        <div className="mt-4 flex items-center gap-2 text-[12px] text-fg3">
+          <div className="h-px flex-1 bg-border" />
+          또는
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <button
+          type="button"
+          onClick={onGuestMode}
+          className="mt-4 w-full cursor-pointer rounded-[10px] border-[1.5px] border-dashed border-border bg-transparent py-2.5 text-sm font-medium text-fg2"
+        >
+          로그인 없이 둘러보기
+        </button>
+        <p className="mt-2 text-center text-[12px] text-fg3">
+          이 기기에만 임시로 저장됩니다. 나중에 로그인하면 데이터를 안전하게 보존할 수 있어요.
+        </p>
       </div>
     </div>
   );

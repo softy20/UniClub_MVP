@@ -39,10 +39,10 @@
  * @file Sidebar.tsx
  * @module components/Sidebar
  */
-import { CalendarBlank, CheckSquare, Lightning, SquaresFour } from "@phosphor-icons/react";
+import { CalendarBlank, CheckSquare, GearSix, Lightning, SquaresFour } from "@phosphor-icons/react";
 import { categoryStyle, uniqueCategoryLabels, type OpsEvent } from "../lib/ops";
 
-export type AppPage = "dashboard" | "calendar" | "tasks" | "manual";
+export type AppPage = "dashboard" | "calendar" | "tasks" | "manual" | "settings";
 
 const NAV = [
   { id: "dashboard", label: "대시보드", icon: SquaresFour },
@@ -50,6 +50,8 @@ const NAV = [
   { id: "tasks", label: "할 일 목록", icon: CheckSquare },
   { id: "manual", label: "AI 일정 추출", icon: Lightning },
 ] as const;
+
+const SETTINGS_NAV = { id: "settings", label: "설정", icon: GearSix } as const;
 
 type SidebarProps = {
   current: AppPage;
@@ -144,10 +146,23 @@ export function Sidebar({ current, onNavigate, events, clubName, overallPct }: S
           <div className="font-display flex size-8 items-center justify-center rounded-full bg-[#6366f1] text-sm font-bold text-white">
             {clubName.slice(0, 1)}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-display text-xs font-medium text-fg">{clubName}</p>
             <p className="text-[12px] text-fg3">임원 보드</p>
           </div>
+          <button
+            type="button"
+            onClick={() => onNavigate("settings")}
+            aria-label="설정"
+            aria-current={current === "settings" ? "page" : undefined}
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg"
+            style={{
+              background: current === "settings" ? "var(--color-nav-active)" : "transparent",
+              color: current === "settings" ? "var(--accent2)" : "var(--fg3)",
+            }}
+          >
+            <SETTINGS_NAV.icon size={18} weight="bold" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </aside>
@@ -159,4 +174,5 @@ export const PAGE_LABEL: Record<AppPage, string> = {
   calendar: "캘린더",
   tasks: "할 일 목록",
   manual: "AI 일정 추출",
+  settings: "설정",
 };

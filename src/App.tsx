@@ -51,9 +51,11 @@ import { EventPanel } from "./components/EventPanel";
 import { MakeCalendar } from "./components/MakeCalendar";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { SeasonSwitcher } from "./components/SeasonSwitcher";
+import { SettingsPage } from "./components/SettingsPage";
 import { TasksPage } from "./components/TasksPage";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
 import type { ClubEventPatch } from "./lib/club-store";
+import { clearGuestClubData } from "./lib/guest-store";
 import { useKstNow } from "./lib/kst";
 import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
 import { useClubData } from "./hooks/useClubData";
@@ -69,24 +71,19 @@ type AppProps = {
   onCreateClub: (name: string) => Promise<string>;
   onCreateInvite: (clubId: string) => Promise<string>;
   onSignOut: () => void;
+  isGuest?: boolean;
+  userEmail?: string | null;
 };
 
-export default function App({
-  clubId,
-  clubs,
-  accessToken,
-  onSwitchClub,
-  onCreateClub,
-  onCreateInvite,
-  onSignOut,
-}: AppProps) {
+export default function App({ onSignOut, isGuest = false, userEmail = null }: AppProps) {
   const clock = useKstNow();
-  const [page, setPage] = useState<AppPage>("dashboard");
-  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(
-    seed,
-    clubId,
-    accessToken,
-  );
+  // 게스트는 저장된 데이터가 없는 채로 시작하므로, 텅 빈 대시보드 대신 곧바로
+  // AI 일정 추출(샘플 체험 또는 직접 업로드) 화면으로 보낸다.
+  const [page, setPage] = useState<AppPage>(isGuest ? "manual" : "dashboard");
+  const { data, seasons, applyClubData, patchEvent, switchSeason, startNewSeason } = useClubData(seed, {
+    guest: isGuest,
+  });
+    
   const academicYear = data.club_info.academic_year;
   const [done, setDone] = useState<Set<string>>(() => loadDoneIds(clubId, academicYear));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -129,6 +126,11 @@ export default function App({
   function applyClubDataAndNavigate(next: ClubData) {
     applyClubData(next);
     go("calendar");
+  }
+
+  function clearGuestDataAndReload() {
+    clearGuestClubData();
+    window.location.reload();
   }
 
   function patchEventAndSync(eventId: string, patch: ClubEventPatch) {
@@ -192,10 +194,29 @@ export default function App({
               onClick={onSignOut}
               className="flex h-[29px] cursor-pointer items-center rounded-md bg-card px-2.5 text-[13px] font-semibold text-fg3 transition-colors duration-150 hover:bg-card2"
             >
-              로그아웃
+              {isGuest ? "로그인하기" : "로그아웃"}
             </button>
           </div>
         </header>
+
+        {isGuest ? (
+          <div
+            className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-6 py-2"
+            style={{ background: "rgba(234,179,8,0.1)" }}
+            role="status"
+          >
+            <p className="text-[13px] font-medium text-fg2">
+              현재 비로그인 상태입니다. 일정을 보존하고 싶으시다면 로그인해주세요.
+            </p>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="shrink-0 cursor-pointer text-[13px] font-semibold text-accent underline"
+            >
+              로그인하기
+            </button>
+          </div>
+        ) : null}
 
         <div className="min-h-0 flex-1">
           {page === "dashboard" ? (
@@ -228,6 +249,16 @@ export default function App({
             <AiParsePage
               existingData={seasons.length > 0 ? data : null}
               onApply={applyClubDataAndNavigate}
+            />
+          ) : null}
+          {page === "settings" ? (
+            <SettingsPage
+              isGuest={isGuest}
+              userEmail={userEmail}
+              data={data}
+              seasons={seasons}
+              onClearGuestData={clearGuestDataAndReload}
+              onSignOut={onSignOut}
             />
           ) : null}
         </div>

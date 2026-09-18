@@ -31,7 +31,7 @@
  * @file main.tsx
  * @module main
  */
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AuthGate } from "./components/AuthGate";
 import { ClubGate } from "./components/ClubGate";
@@ -40,12 +40,23 @@ import "./index.css";
 
 function Root() {
   const { session, loading, signIn, signUp, signInWithGoogle, signOut } = useAuth();
+  const [guest, setGuest] = useState(false);
 
   if (loading) return null;
-  if (!session) {
-    return <AuthGate onSignIn={signIn} onSignUp={signUp} onSignInWithGoogle={signInWithGoogle} />;
+  if (session) {
+    return <App onSignOut={signOut} userEmail={session.user.email ?? null} />;
   }
-  return <ClubGate session={session} onSignOut={signOut} />;
+  if (guest) {
+    return <App isGuest onSignOut={() => setGuest(false)} />;
+  }
+  return (
+    <AuthGate
+      onSignIn={signIn}
+      onSignUp={signUp}
+      onSignInWithGoogle={signInWithGoogle}
+      onGuestMode={() => setGuest(true)}
+    />
+  );
 }
 
 createRoot(document.getElementById("root")!).render(
