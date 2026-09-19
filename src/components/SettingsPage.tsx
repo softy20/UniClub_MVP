@@ -38,7 +38,7 @@ export function SettingsPage({ isGuest, userEmail, data, seasons, onClearGuestDa
   }
 
   return (
-    <div className="fade-in h-full overflow-y-auto p-6">
+    <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
       <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4">
         <p className="text-[12px] tracking-widest text-fg3 uppercase">설정</p>
 

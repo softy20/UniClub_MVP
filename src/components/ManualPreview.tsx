@@ -304,8 +304,8 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
   const categoryChoices = [...new Set([...lockedCategories, ...uniqueCategoryLabels(data.events), "기타"])];
 
   return (
-    <div className="fade-in min-h-full px-10 py-8">
-      <div className="mb-7 flex items-start justify-between gap-4">
+    <div className="fade-in min-h-full px-4 py-5 md:px-10 md:py-8">
+      <div className="mb-7 flex flex-col items-start justify-between gap-4 md:flex-row">
         <div>
           <div className="mb-1 flex items-center gap-2.5">
             <span className="text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">추출 완료</span>
@@ -323,7 +323,7 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
               : ""}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {onBack ? (
             <button
               type="button"
@@ -369,7 +369,7 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
               <button
                 type="button"
                 onClick={() => setTerm(tab.id)}
-                className="flex cursor-pointer flex-col items-start gap-px whitespace-nowrap bg-transparent px-5 pt-3 pb-2.5 text-left text-sm"
+                className="flex cursor-pointer flex-col items-start gap-px whitespace-nowrap bg-transparent px-3 pt-3 pb-2.5 text-left text-sm md:px-5"
                 style={{
                   borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
                   fontWeight: active ? 700 : 500,
@@ -390,7 +390,7 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
           );
         })}
         <div className="flex-1" />
-        <div className="flex items-center gap-1.5 px-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto px-1">
           {roster.map((name) => (
             <RoleChip key={name} name={name} roster={roster} />
           ))}
@@ -400,7 +400,7 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
       {visible.length === 0 ? (
         <p className="py-[60px] text-center text-sm text-fg3">이 학기에 등록된 행사가 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fill,minmax(360px,1fr))]">
           {visible.map((event) => {
             const pickedDate = event.event_date && isoDateParts(event.event_date) ? event.event_date : "";
             const pickedDateObj = pickedDate ? dateFromIso(pickedDate) : null;

@@ -55,6 +55,7 @@ type EventPanelProps = {
   today: Date;
   roster: string[];
   categories: string[];
+  presentation?: "drawer" | "sheet";
   onClose: () => void;
   onToggle: (checkId: string) => void;
   onPatch: (eventId: string, patch: ClubEventPatch) => void;
@@ -65,6 +66,7 @@ export function EventPanel({
   today,
   roster,
   categories,
+  presentation = "drawer",
   onClose,
   onToggle,
   onPatch,
@@ -118,9 +120,22 @@ export function EventPanel({
     setEditingTitle(false);
   }
 
+  const sheet = presentation === "sheet";
+
   return (
-    <div className="slide-in fixed top-0 right-0 z-40 flex h-full w-[400px] flex-col border-l border-border2 bg-card">
-      <div className="flex items-start justify-between border-b border-border p-5">
+    <div
+      className={
+        sheet
+          ? "sheet-up fixed inset-x-0 bottom-0 z-40 flex h-[min(92dvh,92%)] flex-col rounded-t-[20px] border-t border-border2 bg-card pb-[env(safe-area-inset-bottom,0px)]"
+          : "slide-in fixed top-0 right-0 z-40 flex h-full w-[min(400px,100vw)] flex-col border-l border-border2 bg-card"
+      }
+    >
+      {sheet ? (
+        <div className="flex shrink-0 justify-center pt-2.5">
+          <div className="h-1 w-9 rounded-full bg-border2" aria-hidden="true" />
+        </div>
+      ) : null}
+      <div className={`flex items-start justify-between border-b border-border ${sheet ? "px-5 pt-3 pb-4" : "p-5"}`}>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
             {event.editable ? (

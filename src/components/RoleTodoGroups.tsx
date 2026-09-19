@@ -475,7 +475,7 @@ export function RoleTodoGroups({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 text-[12px] tracking-widest text-fg3 uppercase">
           {heading}
           {variant === "tasks" ? ` · ${headingCount}` : ""}
@@ -693,7 +693,7 @@ function TodoRow({
 
   if (variant === "tasks") {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
+      <div className="flex flex-wrap items-start gap-3 rounded-xl border border-border bg-card p-3">
         <span className="flex h-5 shrink-0 items-center">
           <input
             id={`check-${item.id}`}

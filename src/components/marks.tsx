@@ -353,11 +353,11 @@ export function CategoryFilter({ events, active, onToggle, onToggleAll }: Filter
   const categories = uniqueCategoryLabels(events);
   const allOn = categories.length > 0 && categories.every((cat) => active.has(cat));
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden">
       <button
         type="button"
         onClick={onToggleAll}
-        className="flex h-[30px] cursor-pointer items-center gap-1.5 rounded-[10px] border-0 px-3.5 text-[13px] font-medium"
+        className="flex h-[30px] shrink-0 cursor-pointer items-center gap-1.5 rounded-[10px] border-0 px-3.5 text-[13px] font-medium"
         style={{
           background: allOn ? "rgba(55,56,60,0.1)" : "var(--card)",
           color: allOn ? "var(--fg)" : "var(--fg3)",
@@ -374,7 +374,7 @@ export function CategoryFilter({ events, active, onToggle, onToggleAll }: Filter
             key={cat}
             type="button"
             onClick={() => onToggle(cat)}
-            className="flex h-[30px] cursor-pointer items-center gap-1.5 rounded-[10px] border-0 px-3.5 text-[13px] font-medium"
+            className="flex h-[30px] shrink-0 cursor-pointer items-center gap-1.5 rounded-[10px] border-0 px-3.5 text-[13px] font-medium"
             style={{
               background: on ? item.bg : "var(--card)",
               color: on ? item.color : "var(--fg3)",
