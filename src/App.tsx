@@ -28,7 +28,8 @@
  * - State done: 완료 처리한 할 일 목록 (지금 학년도 기준, academicYear가 바뀌면 다시 불러옵니다)
  * - State selectedId: 상세 패널로 열어본 행사의 아이디
  * - State goToday: "오늘" 버튼을 눌렀는지 여부 (달력 이동용)
- * - 화면 조합: Sidebar, SeasonSwitcher, DashboardPage, MakeCalendar, TasksPage, AiParsePage, EventPanel
+ * - 화면 조합: Sidebar(데스크톱), MobileNav(모바일), SeasonSwitcher, DashboardPage, MakeCalendar, TasksPage, AiParsePage, EventPanel
+ * - 768px 미만에서는 Figma Make와 같이 하단 탭 + 행사 바텀시트로 전환합니다.
  *
  * 💡 팁 및 주의사항:
  * - events, totalTasks, overallPct 같은 값은 매번 새로 계산하지 않고
@@ -44,21 +45,24 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import club from "./data/club.json";
+import { GearSix } from "@phosphor-icons/react";
 import { AiParsePage } from "./components/AiParsePage";
 import { ClubSwitcher } from "./components/ClubSwitcher";
 import { DashboardPage } from "./components/DashboardPage";
 import { EventPanel } from "./components/EventPanel";
 import { MakeCalendar } from "./components/MakeCalendar";
+import { MobileNav } from "./components/MobileNav";
 import { PAGE_LABEL, Sidebar, type AppPage } from "./components/Sidebar";
 import { SeasonSwitcher } from "./components/SeasonSwitcher";
 import { SettingsPage } from "./components/SettingsPage";
 import { TasksPage } from "./components/TasksPage";
+import { useClubData } from "./hooks/useClubData";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { loadDoneIds, saveDoneIds } from "./lib/board";
 import type { ClubEventPatch } from "./lib/club-store";
 import { clearGuestClubData } from "./lib/guest-store";
 import { useKstNow } from "./lib/kst";
 import { buildOpsEvents, uniqueCategoryLabels } from "./lib/ops";
-import { useClubData } from "./hooks/useClubData";
 import type { ClubData, ClubSummary } from "./lib/types";
 
 const seed = club as ClubData;
@@ -91,6 +95,7 @@ export default function App({
   userEmail = null,
 }: AppProps) {
   const clock = useKstNow();
+  const isMobile = useIsMobile();
   // 게스트는 저장된 데이터가 없는 채로 시작하므로, 텅 빈 대시보드 대신 곧바로
   // AI 일정 추출(샘플 체험 또는 직접 업로드) 화면으로 보낸다.
   const [page, setPage] = useState<AppPage>(isGuest ? "manual" : "dashboard");
@@ -164,19 +169,29 @@ export default function App({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
-      <Sidebar
-        current={page}
-        onNavigate={go}
-        events={events}
-        clubName={data.club_info.club_name}
-        overallPct={overallPct}
-      />
+    <div className={`flex overflow-hidden bg-bg ${isMobile ? "h-[100dvh] flex-col" : "h-screen"}`}>
+      {isMobile ? null : (
+        <Sidebar
+          current={page}
+          onNavigate={go}
+          events={events}
+          clubName={data.club_info.club_name}
+          overallPct={overallPct}
+        />
+      )}
 
-      <main className="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="flex shrink-0 items-center justify-between border-b border-border bg-bg2 px-6 py-4">
-          <div>
-            <h1 className="font-display text-lg font-bold text-fg">{PAGE_LABEL[page]}</h1>
+      <main
+        className={`flex min-w-0 flex-1 flex-col ${isMobile ? "min-h-0 overflow-hidden" : "h-screen overflow-y-auto"}`}
+      >
+        <header
+          className={`flex shrink-0 items-center justify-between border-b border-border bg-bg2 ${
+            isMobile ? "px-4 py-2.5" : "px-6 py-4"
+          }`}
+        >
+          <div className="min-w-0">
+            <h1 className={`font-display font-bold text-fg ${isMobile ? "text-[17px] leading-tight" : "text-lg"}`}>
+              {PAGE_LABEL[page]}
+            </h1>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
               {!isGuest && onSwitchClub && onCreateClub && onCreateInvite ? (
                 <ClubSwitcher
@@ -196,7 +211,7 @@ export default function App({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-2 flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={goTodayCalendar}
@@ -205,22 +220,40 @@ export default function App({
             >
               <span className="pulse-dot size-[7px] shrink-0 rounded-full bg-green-500" />
               <span className="tabular text-[13px] font-semibold text-fg3">
-                오늘 {clock.month}월 {clock.day}일
+                {isMobile ? `오늘 ${clock.month}/${clock.day}` : `오늘 ${clock.month}월 ${clock.day}일`}
               </span>
             </button>
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="flex h-[29px] cursor-pointer items-center rounded-md bg-card px-2.5 text-[13px] font-semibold text-fg3 transition-colors duration-150 hover:bg-card2"
-            >
-              {isGuest ? "로그인하기" : "로그아웃"}
-            </button>
+            {isMobile ? (
+              <button
+                type="button"
+                onClick={() => go("settings")}
+                aria-label="설정"
+                aria-current={page === "settings" ? "page" : undefined}
+                className="flex size-[29px] cursor-pointer items-center justify-center rounded-md transition-colors duration-150 hover:bg-card2"
+                style={{
+                  background: page === "settings" ? "var(--color-nav-active)" : "var(--card)",
+                  color: page === "settings" ? "var(--accent2)" : "var(--fg3)",
+                }}
+              >
+                <GearSix size={16} weight="bold" aria-hidden="true" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="flex h-[29px] cursor-pointer items-center rounded-md bg-card px-2.5 text-[13px] font-semibold text-fg3 transition-colors duration-150 hover:bg-card2"
+              >
+                {isGuest ? "로그인하기" : "로그아웃"}
+              </button>
+            )}
           </div>
         </header>
 
         {isGuest ? (
           <div
-            className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-6 py-2"
+            className={`flex shrink-0 items-start justify-between gap-3 border-b border-border py-2 ${
+              isMobile ? "px-4" : "px-6"
+            }`}
             style={{ background: "rgba(234,179,8,0.1)" }}
             role="status"
           >
@@ -237,7 +270,7 @@ export default function App({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1">
+        <div className={`min-h-0 flex-1 ${isMobile ? "overflow-hidden" : ""}`}>
           {page === "dashboard" ? (
             <DashboardPage
               events={events}
@@ -250,6 +283,7 @@ export default function App({
               key={`${data.club_info.club_name}-${data.club_info.academic_year}-${data.events.length}`}
               events={events}
               clock={clock}
+              compact={isMobile}
               focusEvent={selected}
               focusToday={goToday}
               onTodayFocused={() => setGoToday(false)}
@@ -283,6 +317,8 @@ export default function App({
         </div>
       </main>
 
+      {isMobile ? <MobileNav current={page} onNavigate={go} /> : null}
+
       {selected ? (
         <>
           <button
@@ -296,6 +332,7 @@ export default function App({
             today={clock.civil}
             roster={data.club_info.roles.map((role) => role.role_name)}
             categories={uniqueCategoryLabels(data.events)}
+            presentation={isMobile ? "sheet" : "drawer"}
             onClose={() => setSelectedId(null)}
             onToggle={toggle}
             onPatch={patchEventAndSync}

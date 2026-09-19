@@ -88,7 +88,7 @@ export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-bg px-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm rounded-[20px] border border-border bg-card p-8">
         <h1 className="font-display text-lg font-bold text-fg">
           {mode === "signin" ? "로그인" : "회원가입"}

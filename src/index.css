@@ -92,6 +92,15 @@ body {
   }
 }
 
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -124,6 +133,18 @@ body {
 
 .slide-in {
   animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-in,
+  .sheet-up,
+  .fade-in {
+    animation: none;
+  }
 }
 
 .fade-in {
