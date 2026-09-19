@@ -74,12 +74,12 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
   ];
 
   return (
-    <div className="fade-in h-full overflow-y-auto p-6">
-      <div className="mb-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
+    <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 md:mb-8 md:gap-4 xl:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
-            <p className="mb-2 text-[13px] tracking-widest text-fg3 uppercase">{stat.label}</p>
-            <p className="font-display mb-1 text-2xl font-bold" style={{ color: stat.color }}>
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-3.5 md:p-4">
+            <p className="mb-2 text-[11px] tracking-widest text-fg3 uppercase md:text-[13px]">{stat.label}</p>
+            <p className="font-display mb-1 text-[22px] font-bold md:text-2xl" style={{ color: stat.color }}>
               {stat.value}
             </p>
             <p className="text-xs text-fg3">{stat.sub}</p>
@@ -121,7 +121,43 @@ export function DashboardPage({ events, officerCount, onSelect }: DashboardPageP
 
       <div>
         <p className="mb-4 text-[12px] tracking-widest text-fg3 uppercase">전체 행사 목록</p>
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div className="flex flex-col gap-2 md:hidden">
+          {[...events]
+            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .map((event) => {
+              const done = event.checklist.filter((item) => item.done).length;
+              const pct = event.checklist.length === 0 ? 0 : Math.round((done / event.checklist.length) * 100);
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => onSelect(event)}
+                  className="min-h-11 cursor-pointer rounded-[14px] border border-border bg-card p-3.5 text-left"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <Tag cat={event.category} />
+                    <DdayBadge dday={event.dday} />
+                  </div>
+                  <p className="font-display mb-1 text-[15px] font-bold text-fg">{event.title}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-fg3">
+                      {event.date.getMonth() + 1}월 {event.date.getDate()}일
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-0.5 w-[60px] rounded-full bg-border2">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, background: pct === 100 ? "#22c55e" : "#6366f1" }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-fg3">{pct}%</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+        <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-card2">
