@@ -87,7 +87,7 @@ export function TasksPage({ events, roster, onToggle, onPatch }: TasksPageProps)
   );
 
   return (
-    <div className="fade-in h-full overflow-y-auto p-6">
+    <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
       <RoleTodoGroups
         heading="부서별 할 일"
         items={items}

@@ -1058,7 +1058,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
   }
 
   return (
-    <div className="fade-in h-full overflow-y-auto p-6">
+    <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
       <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4">
         {phase === "input" ? (
           <>
@@ -1179,7 +1179,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
 
             <div
               key={currentKey}
-              className="fade-in rounded-[20px] border border-border bg-card px-10 pt-10 pb-9"
+              className="fade-in rounded-[20px] border border-border bg-card px-5 pt-7 pb-6 md:px-10 md:pt-10 md:pb-9"
               aria-busy={loading}
             >
               <p className="mb-3 text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
@@ -1317,13 +1317,13 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
               <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[14px] bg-[rgba(0,102,255,0.1)] text-[22px]">
                 🔒
               </div>
-              <h2 className="font-display mb-2 text-[26px] font-extrabold text-fg">부서와 행사 분류를 확인해 주세요</h2>
+              <h2 className="font-display mb-2 text-[22px] font-extrabold text-fg md:text-[26px]">부서와 행사 분류를 확인해 주세요</h2>
               <p className="text-sm text-fg3">
                 {profile.club_name} · {profile.academic_year}년. 아래 목록으로 연간 행사를 분류합니다. 추가하거나 삭제한 뒤
                 다음으로 넘어가세요.
               </p>
             </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-8">
+            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
               <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">현재 팀 목록</p>
               <div className="mb-0 flex flex-wrap items-center gap-2.5">
                 {profile.roles.map((role) =>
@@ -1367,7 +1367,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
                 disabled={loading}
               />
             </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-8">
+            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
               <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">행사 분류</p>
               <div className="flex flex-wrap items-center gap-2.5">
                 {profile.categories.map((item) =>
@@ -1407,7 +1407,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
                 disabled={loading}
               />
             </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-8">
+            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
               <p className="mb-2 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">동아리 장르</p>
               <p className="mb-4 text-[13px] leading-relaxed text-fg3">
                 매뉴얼에 준비 TO-DO가 비어 있으면, 고른 장르의 표준 운영으로 보충합니다. 미리보기에서 지울 수 있습니다.

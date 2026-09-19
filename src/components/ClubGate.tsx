@@ -103,7 +103,7 @@ export function ClubGate({ session, onSignOut }: ClubGateProps) {
 
   if (!activeClubId) {
     return (
-      <div className="flex h-screen items-center justify-center bg-bg px-4">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-bg px-4">
         <div className="w-full max-w-sm rounded-[20px] border border-border bg-card p-8">
           <h1 className="font-display text-lg font-bold text-fg">동아리가 아직 없어요</h1>
           <p className="mt-1 text-[13px] text-fg3">

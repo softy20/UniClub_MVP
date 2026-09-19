@@ -75,7 +75,7 @@ export function SeasonSwitcher({ clubName, activeYear, seasons, onSwitch, onStar
           </option>
         ))}
       </select>
-      <span className="text-[12px] text-fg3">· {clubName}</span>
+      <span className="hidden text-[12px] text-fg3 sm:inline">· {clubName}</span>
 
       {adding ? (
         <span className="flex items-center gap-1">
