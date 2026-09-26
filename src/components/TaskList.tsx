@@ -42,6 +42,10 @@ type TaskRowProps = {
   today: Date;
 };
 
+/**
+ * 할 일 목록의 한 줄을 그리는 컴포넌트. 완료 여부(done)는 props로만 받고 내부에서 저장하지 않으며,
+ * 클릭하면 펼쳐져 상세 설명/체크리스트를 보여주는 open state만 자체 관리한다.
+ */
 export function TaskRow({ task, done, onToggle, today }: TaskRowProps) {
   const [open, setOpen] = useState(false);
   const daysLeft = dayDiff(today, task.dueDate);

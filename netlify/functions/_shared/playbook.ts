@@ -77,11 +77,19 @@ const GENRE_PREP: Record<ClubGenre, PlaybookItem[]> = {
 const MAX_INFERRED_PER_EVENT = 6;
 const SKIP_ENRICH_WHEN_EXTRACTED_AT = 4;
 
+/**
+ * 보충 업무를 맡길 역할을 고른다. 선호 패턴(prefer)에 이름이 매칭되는 역할이 있으면 그
+ * 역할을, 없으면 프로필의 기본 역할을 반환한다.
+ */
 function pickRole(profile: ClubProfile, prefer: RegExp): string {
   const hit = profile.roles.find((role) => prefer.test(role.role_name));
   return hit?.role_name ?? profile.default_role;
 }
 
+/**
+ * 업무에 source("extracted" | "inferred") 태그를 붙인다. 원문에서 추출된 게 아니라
+ * 이미 보충된 업무(isInferredTask)면 "inferred", 아니면 "extracted"로 표시한다.
+ */
 function tagTaskSource(task: ClubTask): ClubTask {
   return {
     ...task,
@@ -89,6 +97,14 @@ function tagTaskSource(task: ClubTask): ClubTask {
   };
 }
 
+/**
+ * 원문에서 추출된 준비 업무가 부족한 행사에, 장르별/공통 플레이북(GENRE_PREP,
+ * COMMON_PREP)에서 아직 없는 업무를 보충해 채워 넣는다.
+ * @returns 업무가 보충된 새 ClubEvent
+ * 특이사항: 원문 추출 업무가 이미 충분하면(SKIP_ENRICH_WHEN_EXTRACTED_AT개 이상) 보충하지
+ * 않는다. 숙소/교통 관련 항목은 행사 설명에 "자택/본가"류 표현이 있으면 제외한다.
+ * 보충 개수는 MAX_INFERRED_PER_EVENT로 제한한다.
+ */
 export function enrichEventTasks(event: ClubEvent, profile: ClubProfile, genre: ClubGenre): ClubEvent {
   const tasks = event.tasks.map(tagTaskSource);
   const extractedCount = tasks.filter((task) => !isInferredTask(task)).length;

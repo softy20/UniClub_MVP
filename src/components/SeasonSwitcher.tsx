@@ -40,16 +40,26 @@ type SeasonSwitcherProps = {
   onStartNewSeason: (year: number) => void;
 };
 
+/**
+ * 헤더에서 현재 학년도(시즌)를 보여주고 전환/새 학년도 시작을 처리하는 드롭다운 컴포넌트.
+ * 특이사항: adding/draftYear로 새 학년도 입력 UI를 토글하며, seasons에 activeYear가 없을 수도 있어
+ * 항상 합쳐서(중복 제거) 내림차순으로 보여준다.
+ */
 export function SeasonSwitcher({ clubName, activeYear, seasons, onSwitch, onStartNewSeason }: SeasonSwitcherProps) {
   const [adding, setAdding] = useState(false);
   const [draftYear, setDraftYear] = useState(() => String(activeYear + 1));
   const years = [...new Set([...seasons, activeYear])].sort((a, b) => b - a);
 
+  /** 새 학년도 입력 UI를 열고, 입력값을 다음 해로 초기화한다. */
   function startAdding() {
     setDraftYear(String(activeYear + 1));
     setAdding(true);
   }
 
+  /**
+   * 입력된 연도로 새 학년도 시작을 요청한다.
+   * 특이사항: 2000~3000 범위를 벗어나거나 숫자가 아니면 조용히 무시한다.
+   */
   function submitNewSeason() {
     const year = Math.round(Number(draftYear));
     if (!Number.isFinite(year) || year < 2000 || year > 3000) return;

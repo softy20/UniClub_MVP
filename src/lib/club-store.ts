@@ -65,6 +65,12 @@ function newTaskId(): string {
   return `draft-${crypto.randomUUID()}`;
 }
 
+/**
+ * 특정 행사(eventId) 하나를 patch 내용대로 수정한 새 ClubData를 반환한다.
+ * @param patch - 이름/카테고리/날짜 변경, 기존 할 일 수정 또는 삭제, 새 할 일 추가 지시서
+ * @returns 원본을 변경하지 않은 새 ClubData(불변성 유지). eventId가 없으면 내용이 그대로인 새 객체를 반환한다.
+ * 특이사항: 값이 비어 있거나(trim 후 빈 문자열) 유효하지 않은 patch 필드는 무시되고 기존 값이 유지된다.
+ */
 export function patchClubEvent(data: ClubData, eventId: string, patch: ClubEventPatch): ClubData {
   return {
     ...data,

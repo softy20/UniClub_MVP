@@ -79,6 +79,9 @@ const EVENT_KINDS: Record<string, LegendId[]> = {
   evt_club_reregistration: ["officer"],
 };
 
+/**
+ * 날짜를 "YYYY-MM-DD" 형태의 키 문자열로 바꾼다(같은 날짜 비교/그룹핑용).
+ */
 export function dateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -86,16 +89,28 @@ export function dateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * 두 날짜가 같은 날인지(연/월/일이 같은지) 확인한다.
+ */
 export function sameDay(a: Date, b: Date): boolean {
   return dateKey(a) === dateKey(b);
 }
 
+/**
+ * 상세 패널에 표시할 날짜 문자열을 만든다.
+ * 특이사항: 날짜의 연도가 오늘(todayYear)과 다르면(과거/미래 시즌 데이터) 연도를 앞에 붙여서 구분한다.
+ */
 export function formatPanelDate(date: Date, todayYear: number): string {
   const body = `${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAYS[date.getDay()]}`;
   if (date.getFullYear() === todayYear) return body;
   return `${date.getFullYear()}년 ${body}`;
 }
 
+/**
+ * 달력 그리드 한 달치 칸을 계산한다. 월 시작 요일 앞과 월 끝 뒤는 null(빈 칸)로 채운다.
+ * @param monthIndex - 0부터 시작하는 월(0=1월)
+ * @returns 7의 배수 길이를 갖는, 날짜(1~말일) 또는 null이 들어있는 배열
+ */
 export function monthCells(year: number, monthIndex: number): (number | null)[] {
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -105,17 +120,29 @@ export function monthCells(year: number, monthIndex: number): (number | null)[] 
   return cells;
 }
 
+/**
+ * id로 LEGEND 항목(라벨, 색상 클래스)을 찾는다.
+ * 특이사항: 존재하지 않는 id를 넘기면 예외를 던진다(LegendId 타입이 항상 LEGEND에 있는 값이라고 가정).
+ */
 export function legendById(id: LegendId) {
   const found = LEGEND.find((item) => item.id === id);
   if (!found) throw new Error(`Unknown legend: ${id}`);
   return found;
 }
 
+/**
+ * 행사가 어떤 범례(legend)에 속하는지 결정한다.
+ * 특이사항: EVENT_KINDS에 하드코딩된 데모 행사 id가 있으면 그 값을 우선 쓰고, 없으면 카테고리+이름 텍스트로 추론한다.
+ */
 function kindsForEvent(event: ClubEvent): LegendId[] {
   if (EVENT_KINDS[event.event_id]) return EVENT_KINDS[event.event_id];
   return kindsFromText(`${event.category} ${event.event_name}`);
 }
 
+/**
+ * 텍스트(카테고리+행사명)에 포함된 키워드를 보고 어울리는 범례를 하나 고른다.
+ * 특이사항: 위에서부터 순서대로 검사해 먼저 매칭되는 규칙을 채택하고, 아무 것도 안 걸리면 "social"(대면)로 분류한다.
+ */
 function kindsFromText(text: string): LegendId[] {
   if (/부스|드림데이즈/.test(text)) return ["booth"];
   if (/MT/.test(text)) return ["mt"];
@@ -126,11 +153,17 @@ function kindsFromText(text: string): LegendId[] {
   return ["social"];
 }
 
+/**
+ * 행사 상세 패널에 보여줄 설명 문자열을 만든다(장소 + 할 일 이름 목록).
+ */
 function eventDetails(event: ClubEvent): string {
   const tasks = event.tasks.map((task) => task.task_name).join(" · ");
   return [event.location, tasks].filter(Boolean).join("\n");
 }
 
+/**
+ * 선물/기념일 상세 패널에 보여줄 설명 문자열을 만든다(수령자 + 주의사항/추천 물품).
+ */
 function giftDetails(gift: GiftOccasion): string {
   return [
     gift.recipients.join(", "),
@@ -142,6 +175,10 @@ function giftDetails(gift: GiftOccasion): string {
     .join("\n");
 }
 
+/**
+ * 동아리의 행사와 선물/기념일을 합쳐서 달력에 표시할 CalendarEvent 배열로 만든다.
+ * @returns 날짜 오름차순으로 정렬된 배열
+ */
 export function buildCalendarEvents(data: ClubData): CalendarEvent[] {
   const year = data.club_info.academic_year;
   const fromEvents = data.events.map((event) => ({
@@ -161,6 +198,10 @@ export function buildCalendarEvents(data: ClubData): CalendarEvent[] {
   return [...fromEvents, ...fromGifts].sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
+/**
+ * 선택된 범례(filter)로 이벤트 목록을 필터링한다.
+ * @returns filter가 null이면 전체 이벤트를 그대로 반환
+ */
 export function visibleEvents(
   events: CalendarEvent[],
   filter: LegendId | null,
@@ -169,6 +210,10 @@ export function visibleEvents(
   return events.filter((event) => event.kinds.includes(filter));
 }
 
+/**
+ * 화면에 점(dot)으로 표시할 범례 id 목록을 계산한다.
+ * 특이사항: filter가 있으면 그 필터 하나만, 없으면 화면에 보이는 이벤트들이 실제로 갖고 있는 범례만 LEGEND 순서대로 반환한다.
+ */
 export function dotsForEvents(events: CalendarEvent[], filter: LegendId | null): LegendId[] {
   const visible = visibleEvents(events, filter);
   const present = new Set(visible.flatMap((event) => (filter ? [filter] : event.kinds)));

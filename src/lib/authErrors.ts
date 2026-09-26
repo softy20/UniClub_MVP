@@ -39,6 +39,11 @@ const MESSAGES: Record<string, string> = {
   "Unable to validate email address: invalid format": "이메일 형식이 올바르지 않습니다.",
 };
 
+/**
+ * Supabase가 보내는 영어 인증 에러 메시지를 한국어 안내 문구로 바꾼다.
+ * @returns MESSAGES에 정확히 일치하는 메시지가 있으면 그 문구, "rate limit"이 포함되면 전용 안내,
+ *   그 외에는 무난한 기본 문구(영어 원문이 그대로 노출되지 않도록)
+ */
 export function translateAuthError(message: string): string {
   if (MESSAGES[message]) return MESSAGES[message];
   if (message.toLowerCase().includes("rate limit")) {

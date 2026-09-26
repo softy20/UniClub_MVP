@@ -101,6 +101,11 @@ const extractClubPlanTool: Anthropic.Tool = {
   },
 };
 
+/**
+ * 요청 본문의 months 값을 검증해 1~12 범위의 정수 배열(중복 제거, 오름차순)로 만든다.
+ * @returns 정규화된 월 배열. value가 없으면 null(전체 기간 의미)
+ * 특이사항: 배열이 아니거나 유효한 월이 하나도 없으면 예외를 던진다.
+ */
 function parseMonths(value: unknown): number[] | null {
   if (value === undefined || value === null) return null;
   if (!Array.isArray(value)) throw new Error("Invalid months");
@@ -115,6 +120,11 @@ function parseMonths(value: unknown): number[] | null {
   return months;
 }
 
+/**
+ * 요청한 월(months)에 해당하지 않는 events/monthly_timelines/gifts_and_anniversaries
+ * 항목을 걸러낸다. 모델이 지시를 어기고 다른 월 데이터를 섞어 보낸 경우를 대비한 방어 필터다.
+ * @returns months가 null이면 data를 그대로 반환
+ */
 function applyMonthFilter(data: ClubData, months: number[] | null): ClubData {
   if (!months) return data;
   const allowed = new Set(months);
@@ -130,6 +140,11 @@ function applyMonthFilter(data: ClubData, months: number[] | null): ClubData {
   };
 }
 
+/**
+ * 일정 추출용 시스템 프롬프트를 만든다. 잠긴 ClubProfile의 허용 역할/분류 목록을 프롬프트에
+ * 박아 넣어 모델이 그 목록 밖의 역할/분류를 만들어내지 못하게 하고, months 유무에 따라
+ * 특정 월만 추출할지 연간 전체를 추출할지 규칙을 다르게 지시한다.
+ */
 function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: number[] | null, genre: ClubGenre): string {
   const roleLines = profile.roles
     .map((role) => {
@@ -207,6 +222,11 @@ ${categoryLines}
 - club_info.roles: 잠긴 ClubProfile.roles와 동일해야 한다`;
 }
 
+/**
+ * 모델 응답에서 ClubData를 뽑아낸다. extract_club_plan 도구 호출 결과를 우선 사용하고,
+ * 도구 호출이 없거나 형식이 안 맞으면 응답 텍스트를 느슨한 JSON으로 파싱해 재시도한다.
+ * 특이사항: 둘 다 실패하면 사용자에게 보여줄 한국어 에러 메시지를 던진다.
+ */
 function parseClubData(response: Anthropic.Message): ClubData {
   const tool = firstToolUse(response.content);
   if (tool && tool.name === "extract_club_plan") {
@@ -225,6 +245,13 @@ function parseClubData(response: Anthropic.Message): ClubData {
   throw new Error("일정을 읽지 못했습니다. 다시 추출해 주세요.");
 }
 
+/**
+ * 잠긴 ClubProfile을 기준으로 매뉴얼에서 연간 일정/TO-DO를 추출하는 Netlify 함수 핸들러.
+ * months가 주어지면 해당 월 구간만, 없으면 연간 전체를 추출해 ClubData로 반환한다.
+ * 특이사항: profile이 없거나 locked=false면 400을 반환한다. 추출 결과는
+ * {@link constrainClubData}로 프로필의 역할/분류 제약을 강제 적용한 뒤
+ * {@link applyMonthFilter}로 요청 월 밖 데이터를 한 번 더 걸러낸다.
+ */
 export default async (req: Request) => {
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405);

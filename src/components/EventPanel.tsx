@@ -61,6 +61,10 @@ type EventPanelProps = {
   onPatch: (eventId: string, patch: ClubEventPatch) => void;
 };
 
+/**
+ * 선택된 행사 하나의 상세 정보(제목/카테고리/날짜/체크리스트/메모)를 보여주고 수정할 수 있는
+ * 슬라이드 패널 컴포넌트. 실제 저장은 하지 않고 onPatch/onToggle로 상위 컴포넌트에 위임합니다.
+ */
 export function EventPanel({
   event,
   today,
@@ -96,12 +100,15 @@ export function EventPanel({
     [event.checklist, event.editable, event.id],
   );
 
+  // 다른 행사를 선택해서 event.id가 바뀌면, 제목 수정 중이던 상태와 카테고리
+  // 드롭다운 열림 상태를 초기화한다.
   useEffect(() => {
     setTitleDraft(event.title);
     setEditingTitle(false);
     setOpenCat(false);
   }, [event.id]);
 
+  // 카테고리 드롭다운이 열려 있을 때, 드롭다운 바깥을 클릭(포인터 다운)하면 닫는다.
   useEffect(() => {
     if (!openCat) return;
     function onPointerDown(pointer: PointerEvent) {
@@ -113,6 +120,10 @@ export function EventPanel({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [openCat]);
 
+  /**
+   * 입력 중이던 제목을 저장합니다. 실제로 값이 바뀐 경우에만 onPatch로 상위에 알리고,
+   * 빈 값이면 원래 제목으로 되돌립니다.
+   */
   function saveTitle() {
     const next = titleDraft.trim();
     if (next && next !== event.title) onPatch(event.id, { event_name: next });

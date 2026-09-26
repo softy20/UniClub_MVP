@@ -59,6 +59,10 @@ type HomeBoardProps = {
   clock: KstClock;
 };
 
+/**
+ * 홈 화면(다가오는 행사 + 이번 주/다음 주 할 일)을 조합해 보여주는 컴포넌트.
+ * 특이사항: 자체 상태 없이 모든 데이터를 props로 전달받아 그리기만 하며, 완료 처리는 onToggle로 상위에 위임한다.
+ */
 export function HomeBoard({
   upcoming,
   thisWeek,

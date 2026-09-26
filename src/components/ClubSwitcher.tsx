@@ -25,16 +25,26 @@ type ClubSwitcherProps = {
   onCreateInvite: (clubId: string) => Promise<string>;
 };
 
+/**
+ * 헤더에서 현재 동아리를 보여주고 전환/생성/초대 링크 복사를 처리하는 드롭다운 컴포넌트.
+ * 특이사항: adding/draftName으로 새 동아리 생성 입력 UI를 토글하고, inviteStatus로 초대 링크
+ * 발급-복사 진행 상태(작업 중/복사됨/실패)를 잠깐 보여준 뒤 2초 후 idle로 되돌린다.
+ */
 export function ClubSwitcher({ clubs, activeClubId, onSwitch, onCreateClub, onCreateInvite }: ClubSwitcherProps) {
   const [adding, setAdding] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [inviteStatus, setInviteStatus] = useState<"idle" | "working" | "copied" | "error">("idle");
 
+  /** 새 동아리 이름 입력 UI를 열고 입력값을 비운다. */
   function startAdding() {
     setDraftName("");
     setAdding(true);
   }
 
+  /**
+   * 입력된 이름으로 새 동아리를 생성하고 그 동아리로 전환한다.
+   * 특이사항: 이름이 공백뿐이면 아무 동작도 하지 않는다.
+   */
   async function submitNewClub() {
     const name = draftName.trim();
     if (!name) return;
@@ -43,6 +53,10 @@ export function ClubSwitcher({ clubs, activeClubId, onSwitch, onCreateClub, onCr
     setAdding(false);
   }
 
+  /**
+   * 현재 동아리의 초대 링크를 발급받아 클립보드에 복사한다.
+   * 특이사항: 성공/실패 상태를 inviteStatus에 잠깐 표시했다가 2초 뒤 idle로 되돌린다.
+   */
   async function copyInviteLink() {
     setInviteStatus("working");
     try {

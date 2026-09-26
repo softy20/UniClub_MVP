@@ -46,6 +46,11 @@ type AuthGateProps = {
   onGuestMode: () => void;
 };
 
+/**
+ * 로그인/회원가입/구글 로그인/게스트 모드 진입을 처리하는 인증 게이트 화면 컴포넌트.
+ * 실제 인증 통신은 Props로 받은 함수(onSignIn 등)에 위임하고, 이 컴포넌트는 입력값과
+ * 화면 모드(로그인/회원가입), 오류 및 제출 상태만 관리합니다.
+ */
 export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }: AuthGateProps) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -54,6 +59,9 @@ export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }
   const [submitting, setSubmitting] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
 
+  /**
+   * 구글 로그인 버튼 클릭을 처리합니다. 실패하면 오류 메시지를 화면에 표시합니다.
+   */
   async function handleGoogleClick() {
     setError(null);
     try {
@@ -63,6 +71,10 @@ export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }
     }
   }
 
+  /**
+   * 이메일/비밀번호 폼 제출을 처리합니다. 현재 모드(mode)에 따라 로그인 또는
+   * 회원가입 함수를 호출하고, 회원가입이 성공하면 완료 안내 상태로 전환합니다.
+   */
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
@@ -81,6 +93,10 @@ export function AuthGate({ onSignIn, onSignUp, onSignInWithGoogle, onGuestMode }
     }
   }
 
+  /**
+   * 로그인 모드와 회원가입 모드를 서로 전환하고, 이전 화면에 남아 있던
+   * 오류 메시지와 가입 완료 안내를 함께 초기화합니다.
+   */
   function toggleMode() {
     setMode((prev) => (prev === "signin" ? "signup" : "signin"));
     setError(null);

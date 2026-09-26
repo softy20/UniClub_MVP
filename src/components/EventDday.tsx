@@ -32,6 +32,10 @@ type EventDdayProps = {
   event: UpcomingEvent | null;
 };
 
+/**
+ * 가장 가까운 다음 행사와 D-Day를 크게 보여주는 카드 컴포넌트. 상태는 없고 event props만 받아 그린다.
+ * 특이사항: event가 null이면 "예정된 행사가 없습니다" 안내를, 아니면 D-숫자(당일이면 "오늘")를 표시한다.
+ */
 export function EventDday({ event }: EventDdayProps) {
   if (!event) {
     return (

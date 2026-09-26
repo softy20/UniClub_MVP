@@ -32,6 +32,9 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+/**
+ * 값이 RoleDefinition(role_name, aliases, 선택적 description) 형태를 만족하는지 검사한다.
+ */
 export function isRoleDefinition(value: unknown): value is RoleDefinition {
   if (!isRecord(value)) return false;
   return (
@@ -43,6 +46,9 @@ export function isRoleDefinition(value: unknown): value is RoleDefinition {
   );
 }
 
+/**
+ * 값이 CategoryDefinition(label, aliases) 형태를 만족하는지 검사한다.
+ */
 export function isCategoryDefinition(value: unknown): value is CategoryDefinition {
   if (!isRecord(value)) return false;
   return (
@@ -53,6 +59,9 @@ export function isCategoryDefinition(value: unknown): value is CategoryDefinitio
   );
 }
 
+/**
+ * 값이 QuestionOption(id, label, 선택적 is_other) 형태를 만족하는지 검사한다.
+ */
 export function isQuestionOption(value: unknown): value is QuestionOption {
   if (!isRecord(value)) return false;
   return (
@@ -64,11 +73,21 @@ export function isQuestionOption(value: unknown): value is QuestionOption {
   );
 }
 
+/**
+ * 선택지가 "기타(직접 입력)"류의 옵션인지 판단한다. id가 "other"이거나 라벨에
+ * "직접 입력"이 포함되면 true. 그 외에는 is_other 플래그를 보되, 라벨에 "기타로"가
+ * 포함된 경우는(예: "기타로 통합") 기타 옵션으로 취급하지 않는다.
+ */
 export function isOtherOption(option: QuestionOption): boolean {
   if (option.id === "other" || option.label.includes("직접 입력")) return true;
   return option.is_other === true && !option.label.includes("기타로");
 }
 
+/**
+ * 확인 질문의 선택지를 정리한다. 각 옵션의 id/label 공백을 다듬고, 옵션이 하나도 없으면
+ * 기본 선택지("네, 이대로 확정"/"부서 명칭 통합")를 채우며, "기타(직접 입력)" 옵션이
+ * 없으면 마지막에 추가한다.
+ */
 export function ensureQuestionOptions(question: ClarifyingQuestion): ClarifyingQuestion {
   const options = question.options.map((option) => ({
     id: option.id.trim(),
@@ -84,6 +103,12 @@ export function ensureQuestionOptions(question: ClarifyingQuestion): ClarifyingQ
   return { ...question, options };
 }
 
+/**
+ * 임의의 값을 ClarifyingQuestion으로 파싱한다. question 문자열이 없으면 실패로 처리하고,
+ * category가 허용 목록(QUESTION_CATEGORIES)에 없으면 "roles"로 기본값 처리하며, 선택지는
+ * {@link ensureQuestionOptions}로 정리한다.
+ * @returns 파싱된 질문. question이 비어 있으면 null
+ */
 export function parseClarifyingQuestion(value: unknown): ClarifyingQuestion | null {
   if (!isRecord(value) || typeof value.question !== "string" || !value.question.trim()) {
     return null;
@@ -103,6 +128,9 @@ export function isOnboardingQuestion(value: unknown): value is OnboardingQuestio
   return parseClarifyingQuestion(value) !== null;
 }
 
+/**
+ * 모델이 반환한 questions 배열을 파싱/검증해서 유효한 질문만 남기고 최대 2개로 자른다.
+ */
 export function normalizeQuestions(value: unknown): ClarifyingQuestion[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -111,6 +139,11 @@ export function normalizeQuestions(value: unknown): ClarifyingQuestion[] {
     .slice(0, 2);
 }
 
+/**
+ * 동아리 이름이 비어 있거나 "동아리"/"미상" 같은 일반적인 이름이면, 이름을 물어보는
+ * club_name 질문을 질문 목록 맨 앞에 추가한다.
+ * 특이사항: 이미 club_name 질문이 있으면 그대로 두고, 추가 후에도 질문은 최대 2개로 자른다.
+ */
 export function withClubNameQuestion(clubName: string, questions: ClarifyingQuestion[]): ClarifyingQuestion[] {
   const name = clubName.trim();
   if (!GENERIC_CLUB_NAMES.has(name.toLowerCase()) && name.length >= 2) {
@@ -127,6 +160,10 @@ export function withClubNameQuestion(clubName: string, questions: ClarifyingQues
   return [clubQuestion, ...questions].slice(0, 2);
 }
 
+/**
+ * 값이 완전한 ClubProfile(부서/분류 목록, 기본값, locked 여부까지 포함) 형태를
+ * 만족하는지 검사한다.
+ */
 export function isClubProfile(value: unknown): value is ClubProfile {
   if (!isRecord(value)) return false;
   return (
@@ -146,6 +183,10 @@ export function isClubProfile(value: unknown): value is ClubProfile {
   );
 }
 
+/**
+ * 값이 ClubTask의 필수 필드(task_name, days_before_dday, assigned_role, is_mandatory)를
+ * 만족하는지 검사한다.
+ */
 function isClubTask(value: unknown): value is ClubTaskShape {
   if (!isRecord(value)) return false;
   return (
@@ -156,6 +197,10 @@ function isClubTask(value: unknown): value is ClubTaskShape {
   );
 }
 
+/**
+ * 값이 ClubEvent의 필수 필드를 만족하고, tasks 배열의 각 항목도 {@link isClubTask}를
+ * 통과하는지 검사한다.
+ */
 function isClubEvent(value: unknown): value is ClubEventShape {
   if (!isRecord(value)) return false;
   return (
@@ -168,6 +213,9 @@ function isClubEvent(value: unknown): value is ClubEventShape {
   );
 }
 
+/**
+ * 값이 ClubData(club_info + events 배열) 전체 형태를 만족하는지 엄격하게 검사한다.
+ */
 export function isClubData(value: unknown): value is ClubData {
   if (!isRecord(value)) return false;
   const clubInfo = value.club_info;
@@ -180,6 +228,10 @@ export function isClubData(value: unknown): value is ClubData {
   return events.every(isClubEvent);
 }
 
+/**
+ * 값을 유한한 숫자로 변환한다. 숫자면 그대로, 숫자 형식의 문자열이면 변환해서 반환하고,
+ * 그 외에는 null을 반환한다.
+ */
 function asFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim()) {
@@ -189,6 +241,10 @@ function asFiniteNumber(value: unknown): number | null {
   return null;
 }
 
+/**
+ * 값을 boolean으로 관대하게 변환한다. true/1/"1"/"true"는 true, false/0/"0"/"false"는
+ * false로 취급하고, 그 외 형태는 fallback을 반환한다.
+ */
 function asBoolean(value: unknown, fallback: boolean): boolean {
   if (typeof value === "boolean") return value;
   if (value === "true" || value === 1 || value === "1") return true;
@@ -200,6 +256,12 @@ function asOptionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+/**
+ * 모델/저장소에서 온 느슨한 값을 ClubTask로 보정한다. task_name이 없으면 무효 처리하고,
+ * days_before_dday는 숫자로 강제 변환 후 0 이상 정수로 반올림하며(기본값 7), 나머지
+ * 선택 필드는 값이 있을 때만 포함시킨다.
+ * @returns 보정된 ClubTask. task_name이 없으면 null
+ */
 function coerceClubTask(value: unknown): ClubTask | null {
   if (!isRecord(value)) return null;
   const taskName = asOptionalString(value.task_name);
@@ -226,6 +288,12 @@ function coerceClubTask(value: unknown): ClubTask | null {
   };
 }
 
+/**
+ * 모델/저장소에서 온 느슨한 값을 ClubEvent로 보정한다. event_name이나 유효한 target_month가
+ * 없으면 무효 처리하고, event_id가 없으면 인덱스 기반으로 생성하며, target_month는 1~12로
+ * 클램프한다. tasks는 {@link coerceClubTask}로 각각 보정한다.
+ * @returns 보정된 ClubEvent. 필수 필드가 없으면 null
+ */
 function coerceClubEvent(value: unknown, index: number): ClubEvent | null {
   if (!isRecord(value)) return null;
   const eventName = asOptionalString(value.event_name);
@@ -254,6 +322,12 @@ function coerceClubEvent(value: unknown, index: number): ClubEvent | null {
   };
 }
 
+/**
+ * 임의의 값을 ClubData로 정규화한다. 이미 {@link isClubData} 형태면 그대로 쓰고, 아니면
+ * club_name/academic_year 등 최소 필수 정보만 확인한 뒤 roles와 events를 각각
+ * {@link coerceClubEvent}로 느슨하게 보정해 만들어 낸다.
+ * @returns 정규화된 ClubData. club_name이나 academic_year를 못 구하면 null
+ */
 export function coerceClubData(value: unknown): ClubData | null {
   if (isClubData(value)) return value;
   if (!isRecord(value) || !isRecord(value.club_info)) return null;
@@ -296,16 +370,28 @@ export const COMMON_CATEGORY: CategoryDefinition = {
   aliases: ["미분류", "기타행사"],
 };
 
+/**
+ * 부서 초안 목록을 정규화·중복제거하고, 결과가 비면 기본값(COMMON_ROLE)만 담아 반환한다.
+ */
 export function ensureDraftRoles(roles: RoleDefinition[]): RoleDefinition[] {
   const normalized = dedupeRoles(roles.map(normalizeRole).filter((role) => role.role_name));
   return normalized.length > 0 ? normalized : [COMMON_ROLE];
 }
 
+/**
+ * 행사 분류 초안 목록을 정규화·중복제거하고, 결과가 비면 기본값(COMMON_CATEGORY)만 담아
+ * 반환한다.
+ */
 export function ensureDraftCategories(categories: CategoryDefinition[]): CategoryDefinition[] {
   const normalized = dedupeCategories(categories.map(normalizeCategory).filter((item) => item.label));
   return normalized.length > 0 ? normalized : [COMMON_CATEGORY];
 }
 
+/**
+ * 부서 초안이 "공통" 하나뿐이면(문서에 부서 구분이 없으면) 공통 진행 여부를 확인하는
+ * roles 질문을 질문 목록 앞에 추가한다.
+ * 특이사항: 이미 roles 질문이 있으면 그대로 두고, 추가 후에도 질문은 최대 2개로 자른다.
+ */
 export function withEmptyRolesQuestion(roles: RoleDefinition[], questions: ClarifyingQuestion[]): ClarifyingQuestion[] {
   const onlyCommon = roles.length === 1 && roles[0].role_name === COMMON_ROLE.role_name;
   if (!onlyCommon || questions.some((question) => question.category === "roles")) {
@@ -323,6 +409,12 @@ export function withEmptyRolesQuestion(roles: RoleDefinition[], questions: Clari
   return [rolesQuestion, ...questions].slice(0, 2);
 }
 
+/**
+ * 행사 분류를 확인하는 event_categories 질문을 질문 목록에 추가한다. 분류가 "기타"
+ * 하나뿐이면 기본 분류로 진행할지 묻고, 분류가 있으면 그 목록으로 확정할지 묻는다.
+ * 특이사항: 이미 event_categories 질문이 있으면 그대로 두고, 질문이 이미 2개면 추가하지
+ * 않는다(교체하지 않고 그대로 반환).
+ */
 export function withCategoriesQuestion(
   categories: CategoryDefinition[],
   questions: ClarifyingQuestion[],
@@ -357,6 +449,10 @@ export function withCategoriesQuestion(
   return [...questions, categoryQuestion];
 }
 
+/**
+ * 역할 이름/별칭의 앞뒤 공백을 정리하고, 역할 이름과 같은 별칭이나 빈 별칭, 중복 별칭을
+ * 제거한다.
+ */
 export function normalizeRole(role: RoleDefinition): RoleDefinition {
   const roleName = role.role_name.trim();
   const aliases = role.aliases
@@ -369,6 +465,10 @@ export function normalizeRole(role: RoleDefinition): RoleDefinition {
   };
 }
 
+/**
+ * 분류 라벨/별칭의 앞뒤 공백을 정리하고, 라벨과 같은 별칭이나 빈 별칭, 중복 별칭을
+ * 제거한다.
+ */
 export function normalizeCategory(category: CategoryDefinition): CategoryDefinition {
   const label = category.label.trim();
   const aliases = category.aliases
@@ -377,6 +477,12 @@ export function normalizeCategory(category: CategoryDefinition): CategoryDefinit
   return { label, aliases: [...new Set(aliases)] };
 }
 
+/**
+ * 온보딩에서 확정한 부서표/행사 분류를 최종 ClubProfile로 잠근다. 역할과 분류를 정규화·
+ * 중복제거하고, 기본 역할/분류가 목록에 없으면 자동으로 추가하며, academic_year는 항상
+ * 현재 학년도로 강제한다(문서에 적힌 과거 연도를 무시).
+ * @returns locked: true로 확정된 ClubProfile
+ */
 export function lockClubProfile(input: ClubProfile): ClubProfile {
   const roles = dedupeRoles(input.roles.map(normalizeRole).filter((role) => role.role_name));
   const defaultRole = input.default_role.trim() || "공통";
@@ -406,6 +512,10 @@ export function lockClubProfile(input: ClubProfile): ClubProfile {
   };
 }
 
+/**
+ * 모델이 추출한 담당자 표기(raw)를 잠긴 프로필의 role_name으로 정규화한다. 정확히
+ * 일치하는 역할, 별칭으로 일치하는 역할 순으로 찾고 없으면 기본 역할을 반환한다.
+ */
 export function resolveAssignedRole(raw: string, profile: ClubProfile): string {
   const needle = raw.trim();
   if (!needle) return profile.default_role;
@@ -416,6 +526,10 @@ export function resolveAssignedRole(raw: string, profile: ClubProfile): string {
   return profile.default_role;
 }
 
+/**
+ * 모델이 추출한 행사 분류 표기(raw)를 잠긴 프로필의 분류 label로 정규화한다. 정확히
+ * 일치하는 분류, 별칭으로 일치하는 분류 순으로 찾고 없으면 기본 분류를 반환한다.
+ */
 export function resolveEventCategory(raw: string, profile: ClubProfile): string {
   const needle = raw.trim();
   if (!needle) return profile.default_category;
@@ -430,6 +544,12 @@ export function parseClubGenre(value: unknown): ClubGenre {
   return isClubGenre(value) ? value : "other";
 }
 
+/**
+ * 모델이 추출한 ClubData를 잠긴 ClubProfile 기준으로 강제 정렬한다. club_info를
+ * 프로필의 이름/연도/역할로 덮어쓰고, 이벤트는 {@link mergeClubEvents}로 중복을 합친 뒤
+ * 각 이벤트의 분류·담당 역할을 프로필 값으로 정규화하고 {@link enrichEventTasks}로
+ * 준비 업무를 보충한다.
+ */
 export function constrainClubData(data: ClubData, profile: ClubProfile, genre: ClubGenre = "other"): ClubData {
   return {
     ...data,
@@ -460,6 +580,10 @@ export function constrainClubData(data: ClubData, profile: ClubProfile, genre: C
   };
 }
 
+/**
+ * role_name이 같은 역할들을 하나로 합친다. 별칭은 합집합으로 모으고, description은
+ * 먼저 나온 값을 우선한다.
+ */
 function dedupeRoles(roles: RoleDefinition[]): RoleDefinition[] {
   const seen = new Map<string, RoleDefinition>();
   for (const role of roles) {
@@ -477,6 +601,9 @@ function dedupeRoles(roles: RoleDefinition[]): RoleDefinition[] {
   return [...seen.values()];
 }
 
+/**
+ * label이 같은 분류들을 하나로 합친다. 별칭은 합집합으로 모은다.
+ */
 function dedupeCategories(categories: CategoryDefinition[]): CategoryDefinition[] {
   const seen = new Map<string, CategoryDefinition>();
   for (const category of categories) {

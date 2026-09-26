@@ -51,6 +51,10 @@ export type ClubTask = {
   source?: TaskSource;
 };
 
+/**
+ * 이 할 일이 AI가 추측해서 만든 것인지 판단한다.
+ * @returns source가 "inferred"이거나 task_id에 "_inferred_"가 포함되어 있으면 true
+ */
 export function isInferredTask(task: ClubTask): boolean {
   return task.source === "inferred" || Boolean(task.task_id?.includes("_inferred_"));
 }
@@ -66,10 +70,17 @@ export const CLUB_GENRES = [
 
 export type ClubGenre = (typeof CLUB_GENRES)[number]["id"];
 
+/**
+ * 값이 CLUB_GENRES에 정의된 유효한 ClubGenre id인지 확인하는 타입 가드.
+ */
 export function isClubGenre(value: unknown): value is ClubGenre {
   return typeof value === "string" && CLUB_GENRES.some((genre) => genre.id === value);
 }
 
+/**
+ * 장르 id에 해당하는 한국어 라벨을 반환한다.
+ * @returns 일치하는 장르가 없으면 "기타"
+ */
 export function clubGenreLabel(genre: ClubGenre): string {
   return CLUB_GENRES.find((item) => item.id === genre)?.label ?? "기타";
 }

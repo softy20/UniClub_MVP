@@ -46,10 +46,20 @@ import { CategoryFilter, DdayBadge } from "./marks";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+/**
+ * 행사에 실제 날짜가 지정되어 있는지 확인한다.
+ * 특이사항: 날짜가 모호/미정인 행사는 event.date가 유효하지 않은(Invalid) Date로 들어오므로
+ * getTime()이 NaN이 되는지로 판별한다. 이런 행사는 달력에 표시되지 않는다.
+ */
 function isDated(event: OpsEvent): boolean {
   return Number.isFinite(event.date.getTime());
 }
 
+/**
+ * 달력을 열었을 때 처음 보여줄 년/월을 계산한다.
+ * 특이사항: 아직 지나지 않은(daysLeft >= 0) 행사 중 가장 가까운 것을 우선하고,
+ * 그런 행사가 없으면 날짜가 있는 첫 행사로, 그마저 없으면 오늘(clock) 기준 달로 대체한다.
+ */
 function focusMonth(events: OpsEvent[], clock: KstClock): { year: number; month: number } {
   const dated = events.filter(isDated);
   const upcoming = dated.filter((event) => event.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft)[0];
@@ -68,6 +78,12 @@ type MakeCalendarProps = {
   onTodayFocused?: () => void;
 };
 
+/**
+ * 한 달치 달력을 그리고 그 달의 행사를 날짜 칸에 표시하는 화면 컴포넌트.
+ * viewYear/viewMonth로 현재 보고 있는 달을, active로 켜져 있는 카테고리 목록을 관리하며,
+ * focusEvent/focusToday prop이 바뀌면 해당 행사나 오늘이 있는 달로 자동 이동한다.
+ * compact 모드(모바일)에서는 날짜를 눌러 하단 시트로 그날의 행사 목록을 보여준다.
+ */
 export function MakeCalendar({
   events,
   clock,
@@ -109,6 +125,7 @@ export function MakeCalendar({
     setSelectedDay(null);
   }, [viewYear, viewMonth, compact]);
 
+  /** 이전 달로 이동한다. 1월이면 전년도 12월로 넘어가도록 연도도 함께 조정한다. */
   function prevMonth() {
     if (viewMonth === 1) {
       setViewMonth(12);
@@ -118,6 +135,7 @@ export function MakeCalendar({
     }
   }
 
+  /** 다음 달로 이동한다. 12월이면 다음 연도 1월로 넘어가도록 연도도 함께 조정한다. */
   function nextMonth() {
     if (viewMonth === 12) {
       setViewMonth(1);

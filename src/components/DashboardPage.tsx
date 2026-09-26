@@ -46,6 +46,10 @@ type UrgentTodo = {
   event: OpsEvent;
 };
 
+/**
+ * 동아리 운영 현황 KPI(통계 카드, D-7 긴급 할 일, 전체 행사 표)를 계산해서 보여주는
+ * 대시보드 화면 컴포넌트. 자체 상태는 없고, 매 렌더링마다 events로부터 통계를 다시 계산합니다.
+ */
 export function DashboardPage({ events, officerCount, onSelect }: DashboardPageProps) {
   const urgentTodos: UrgentTodo[] = events
     .flatMap((event) =>

@@ -59,6 +59,10 @@ function ChipRemoveButton({ label, color, onRemove }: { label: string; color: st
   );
 }
 
+/**
+ * 행사 분류(카테고리)를 색깔 있는 알약 모양 태그로 보여준다.
+ * onClick이 있으면 이름 부분이 버튼이 되고, onRemove가 있으면 삭제(×) 버튼이 함께 표시된다.
+ */
 export function Tag({
   cat,
   onClick,
@@ -105,6 +109,10 @@ export function Tag({
   );
 }
 
+/**
+ * 행사의 D-Day 문자열("D-7", "D-0", "D+3" 등)을 색깔 점과 함께 보여준다.
+ * 특이사항: 지난 행사(D+)는 회색, 임박(1일 이하)은 빨강, 1주 이내는 노랑, 그 외는 초록으로 표시한다.
+ */
 export function DdayBadge({ dday }: { dday: string }) {
   const past = dday.startsWith("D+");
   const num = past ? Number.POSITIVE_INFINITY : Number(dday.replace("D-", ""));
@@ -134,6 +142,11 @@ export function TaskDueBadge({ daysBefore, daysLeft }: { daysBefore: number; day
 
 export const ROLE_COLORS = ["#0066FF", "#E8492C", "#00838F", "#6A4FE0", "#D81B7A", "#8E24AA"] as const;
 
+/**
+ * 부서(담당) 이름에 항상 같은 색을 배정해주는 함수.
+ * 특이사항: roster(전체 담당자 목록)에 이름이 있으면 그 목록에서의 순서로 색을 고르고,
+ * 목록에 없으면 이름 문자열을 해시로 변환해 색을 골라 항상 같은 이름이면 같은 색이 나오게 한다.
+ */
 export function roleAccent(name: string, roster: string[] = []): string {
   const indexed = roster.indexOf(name);
   if (indexed >= 0) return ROLE_COLORS[indexed % ROLE_COLORS.length];
@@ -142,6 +155,10 @@ export function roleAccent(name: string, roster: string[] = []): string {
   return ROLE_COLORS[Math.abs(hash) % ROLE_COLORS.length];
 }
 
+/**
+ * 담당 부서 이름을 색깔 있는 칩으로 보여준다.
+ * onRemove가 있으면 삭제 버튼이 붙고, onClick/asButton이 있으면 클릭 가능한 버튼으로 렌더링된다.
+ */
 export function RoleChip({
   name,
   roster,
@@ -207,6 +224,12 @@ export function RoleChip({
   );
 }
 
+/**
+ * 담당 부서를 바꿀 수 있는 드롭다운 선택 컴포넌트.
+ * open(드롭다운 열림 여부)과 anchor(드롭다운 화면 좌표)를 상태로 관리하며,
+ * 드롭다운은 createPortal로 document.body에 그려 다른 요소에 잘리지 않게 한다.
+ * 바깥 클릭/Esc/스크롤/창 크기 변경 시 자동으로 닫히도록 이벤트를 등록/해제한다.
+ */
 export function RoleSelect({
   value,
   choices,
@@ -223,6 +246,11 @@ export function RoleSelect({
   const [anchor, setAnchor] = useState({ top: 0, left: 0 });
   const color = roleAccent(value, roster);
 
+  /**
+   * 버튼의 화면상 위치를 기준으로 드롭다운이 표시될 좌표를 계산하고 연다.
+   * 특이사항: 드롭다운이 화면 오른쪽/아래로 넘치지 않도록 위치를 보정하며,
+   * 아래쪽 공간이 부족하면 버튼 위쪽에 드롭다운을 띄운다.
+   */
   function placeAndOpen() {
     const rect = wrapRef.current?.getBoundingClientRect();
     if (rect) {
@@ -327,6 +355,11 @@ export function RoleSelect({
   );
 }
 
+/**
+ * 오늘 기준 남은 일수(daysLeft)를 "D-n"/"D+n" 형태로 보여준다.
+ * 특이사항: DdayBadge와 달리 문자열이 아니라 숫자(daysLeft)를 직접 받아 라벨과 색을 계산하며,
+ * 임박(7일 이내)/여유(14일 이내)/지남 여부에 따라 글자색과 점 색을 다르게 준다.
+ */
 export function DminusBadge({ daysLeft }: { daysLeft: number }) {
   const past = daysLeft < 0;
   const urgent = !past && daysLeft <= 7;
@@ -349,6 +382,10 @@ type FilterProps = {
   onToggleAll: () => void;
 };
 
+/**
+ * 전체 행사 중 원하는 카테고리만 켜고 끌 수 있는 필터 버튼 묶음.
+ * "전체" 버튼은 모든 카테고리가 켜져 있으면 전체 끄기, 아니면 전체 켜기로 동작한다.
+ */
 export function CategoryFilter({ events, active, onToggle, onToggleAll }: FilterProps) {
   const categories = uniqueCategoryLabels(events);
   const allOn = categories.length > 0 && categories.every((cat) => active.has(cat));

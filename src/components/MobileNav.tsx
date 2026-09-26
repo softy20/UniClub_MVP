@@ -19,6 +19,10 @@ type MobileNavProps = {
   onNavigate: (page: AppPage) => void;
 };
 
+/**
+ * 모바일 화면에서 사이드바 대신 보여주는 하단 탭 바 컴포넌트. 자체 상태 없이 현재 페이지(current)를
+ * 강조 표시하고, 탭을 누르면 onNavigate로 페이지 전환을 위임한다.
+ */
 export function MobileNav({ current, onNavigate }: MobileNavProps) {
   return (
     <nav
