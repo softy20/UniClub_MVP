@@ -44,11 +44,23 @@ type AnswerBody = {
   turn?: unknown;
 };
 
+/**
+ * 값이 온보딩 대화 메시지(role: "user" | "assistant", content: string) 형태인지 검사한다.
+ */
 function isChatMessage(value: unknown): value is OnboardingChatMessage {
   if (!isRecord(value)) return false;
   return (value.role === "user" || value.role === "assistant") && typeof value.content === "string";
 }
 
+/**
+ * 온보딩 후속 턴을 처리하는 Netlify 함수 핸들러. 지금까지의 부서/분류 초안과 대화 내역을
+ * 모델에 다시 보내, 아직 정보가 부족하면 확인 질문을(status "clarifying"), 충분하면 부서표를
+ * 확정한 ClubProfile을(status "locked") 반환한다.
+ * 특이사항: MAX_ONBOARDING_TURNS에 도달하면 forceLock으로 lock_club_profile 도구 호출을
+ * 강제한다. 행사 분류를 아직 확인하지 않았으면(categories_asked=false) lock 대신 분류
+ * 확인 질문을 우선 끼워 넣는다. 모델이 부서 없이 잠그려 하면(roles가 비거나 정보 부족)
+ * "공통" 역할로 채운 fallbackLock으로 대체한다.
+ */
 export default async (req: Request) => {
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405);

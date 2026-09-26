@@ -58,6 +58,11 @@ function authHeaders(accessToken: string): HeadersInit {
   return { Authorization: `Bearer ${accessToken}` };
 }
 
+/**
+ * 서버(Netlify 함수)에서 특정 동아리의 데이터를 조회한다.
+ * @param year - 조회할 학년도. 생략하면 서버가 가장 최근 학년도를 돌려준다.
+ * 특이사항: 응답이 실패(response.ok === false)면 에러를 던진다.
+ */
 async function fetchClubData(clubId: string, accessToken: string, year?: number): Promise<ClubDataResponse> {
   const params = new URLSearchParams({ club: clubId });
   if (year !== undefined) params.set("season", String(year));
@@ -66,6 +71,10 @@ async function fetchClubData(clubId: string, accessToken: string, year?: number)
   return (await response.json()) as ClubDataResponse;
 }
 
+/**
+ * 동아리 데이터 전체를 서버(Netlify 함수)에 저장(POST)한다.
+ * 특이사항: 응답이 실패(response.ok === false)면 에러를 던진다.
+ */
 async function persistClubData(clubId: string, accessToken: string, data: ClubData): Promise<void> {
   const params = new URLSearchParams({ club: clubId });
   const response = await fetch(`${CLUB_DATA_ENDPOINT}?${params}`, {
@@ -80,6 +89,15 @@ async function persistClubData(clubId: string, accessToken: string, data: ClubDa
 // 게스트(비로그인 둘러보기) 모드에서는 서버 대신 브라우저 localStorage(guest-store)를 쓴다.
 // 실제 동아리 계정 데이터와 섞이지 않도록 완전히 분리된 저장소를 쓰고, clubId/accessToken도
 // 필요 없다(둘 다 실제 로그인 사용자 전용 — 게스트는 빈 문자열을 넘긴다).
+/**
+ * 동아리 데이터를 서버(또는 게스트 모드에서는 localStorage)에서 불러오고,
+ * 화면에서 바뀐 내용을 저장/시즌 전환/새 시즌 생성까지 처리하는 훅.
+ * @param seed - 서버 응답이 오기 전까지 보여줄 기본 동아리 데이터
+ * @param options.guest - true면 서버 대신 게스트 로컬 저장소(guest-store)를 사용한다
+ * @returns data, loading, seasons와 applyClubData/patchEvent/switchSeason/startNewSeason 함수
+ * 특이사항: 게스트 모드에서는 데모 시드를 그대로 보여주지 않고 빈 상태(emptyClubData)로 시작해서
+ * 데모 데이터와 게스트 데이터가 섞이는 것을 막는다. cancelled 플래그로 언마운트 후 응답 반영을 막는다.
+ */
 export function useClubData(seed: ClubData, clubId: string, accessToken: string, options?: { guest?: boolean }) {
   const guest = options?.guest ?? false;
   // 게스트는 데모 시드(오션홀릭)를 초기값으로 보여주지 않는다 — 그걸 existingData로 쓰면
@@ -115,10 +133,16 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string,
     };
   }, [guest, clubId, accessToken]);
 
+  /** 주어진 연도가 seasons 목록에 없으면 추가하고 오름차순으로 정렬해둔다. */
   function rememberSeason(year: number) {
     setSeasons((prev) => (prev.includes(year) ? prev : [...prev, year].sort((a, b) => a - b)));
   }
 
+  /**
+   * 데이터를 실제 저장소에 반영한다.
+   * 특이사항: 게스트 모드면 localStorage(guest-store)에, 아니면 서버에 저장한다. 서버 저장 실패는
+   * 화면에 영향을 주지 않고 콘솔에만 기록한다.
+   */
   function savePersisted(next: ClubData) {
     if (guest) {
       persistGuestClubData(next);
@@ -129,16 +153,22 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string,
     });
   }
 
+  /**
+   * 화면 상태를 새 데이터로 갱신하고, 시즌 목록을 업데이트한 뒤 저장소에 반영한다.
+   * 특이사항: setData가 저장 요청보다 먼저 일어나 화면이 즉시 갱신된다(낙관적 업데이트).
+   */
   function persist(next: ClubData) {
     setData(next);
     rememberSeason(next.club_info.academic_year);
     savePersisted(next);
   }
 
+  /** 동아리 데이터 전체를 새 값으로 교체하고 저장한다. */
   function applyClubData(next: ClubData) {
     persist(next);
   }
 
+  /** 행사 하나만 부분 수정(patchClubEvent)하고 그 결과를 저장한다. */
   function patchEvent(eventId: string, patch: ClubEventPatch) {
     setData((prev) => {
       const next = patchClubEvent(prev, eventId, patch);
@@ -147,6 +177,11 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string,
     });
   }
 
+  /**
+   * 다른 학년도(시즌)의 데이터를 불러와 화면에 반영한다.
+   * 특이사항: 게스트 모드는 로컬 저장소에서, 아니면 서버에서 조회한다. 실패 시 콘솔에만 기록하고
+   * 화면은 이전 상태를 유지한다.
+   */
   function switchSeason(year: number) {
     setLoading(true);
     const load = guest ? Promise.resolve(fetchGuestClubData(year)) : fetchClubData(clubId, accessToken, year);
@@ -161,6 +196,7 @@ export function useClubData(seed: ClubData, clubId: string, accessToken: string,
       .finally(() => setLoading(false));
   }
 
+  /** 현재 데이터를 템플릿으로 삼아 새 학년도를 만들고 그 시즌으로 전환한다. */
   function startNewSeason(year: number) {
     persist(buildSeasonTemplate(data, year));
   }

@@ -85,6 +85,11 @@ type EditingTask = { eventId: string; taskKey: string; text: string };
 
 const COMMON_ROLE = "공통";
 
+/**
+ * 주어진 월(1~12)이 어느 학기 탭에 속하는지 판단한다.
+ * @param month - 1~12 사이의 월
+ * @returns 해당 월이 속하는 학기 구분값("all" 제외)
+ */
 function termForMonth(month: number): Exclude<AcademicTerm, "all"> {
   if (month === 12 || month === 1 || month === 2) return "winter";
   if (month >= 3 && month <= 5) return "spring";
@@ -92,6 +97,11 @@ function termForMonth(month: number): Exclude<AcademicTerm, "all"> {
   return "fall";
 }
 
+/**
+ * 할 일 목록에서 각 항목을 구분하기 위한 고유 키를 만든다.
+ * 특이사항: task_id가 없는 경우(아직 저장되지 않은 초안 등) eventId와 배열 인덱스를
+ * 조합해 임시 키를 만든다.
+ */
 function taskKey(eventId: string, task: ClubTask, index: number): string {
   return task.task_id ?? `${eventId}-${index}`;
 }
@@ -100,6 +110,11 @@ function newTaskId(): string {
   return `draft-${crypto.randomUUID()}`;
 }
 
+/**
+ * data 안에서 특정 event_id를 가진 행사만 updater로 변경한 새 ClubData를 반환한다.
+ * @param updater - 대상 행사를 받아 변경된 행사를 반환하는 함수
+ * 특이사항: 원본 data는 변경하지 않고 새 객체를 만들어 반환한다(불변성 유지).
+ */
 function updateEvent(data: ClubData, eventId: string, updater: (event: ClubEvent) => ClubEvent): ClubData {
   return {
     ...data,
@@ -111,6 +126,13 @@ function defaultRole(data: ClubData): string {
   return data.club_info.roles[0]?.role_name ?? COMMON_ROLE;
 }
 
+/**
+ * 행사/할 일 미리보기 및 편집 화면 컴포넌트.
+ * 학기 탭으로 행사를 필터링해서 보여주고, 행사 이름/날짜/분류 수정, 할 일 완료 체크·수정·
+ * 삭제·추가, 진행률 표시 등 미리보기 단계에서 필요한 모든 편집 기능을 관리한다.
+ * 특이사항: 데이터를 직접 소유하지 않고 onChange로 변경된 전체 data를 부모에게 전달하는
+ * 제어 컴포넌트(controlled component) 방식으로 동작한다.
+ */
 export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack, onReset }: ManualPreviewProps) {
   const [term, setTerm] = useState<AcademicTerm>("all");
   const [tooltipTab, setTooltipTab] = useState<AcademicTerm | null>(null);
@@ -147,6 +169,10 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     setDone((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  /**
+   * 현재 수정 중인 할 일(editing)의 이름을 저장한다.
+   * 특이사항: 입력값이 비어 있으면(trim 후 빈 문자열) 저장하지 않고 그대로 종료한다.
+   */
   function saveEdit() {
     if (!editing) return;
     const nextName = editing.text.trim();
@@ -162,6 +188,9 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     setEditing(null);
   }
 
+  /**
+   * 지정한 할 일을 이벤트에서 삭제하고, 관련된 완료 체크 상태 및 수정 중인 상태도 함께 정리한다.
+   */
   function removeTask(eventId: string, key: string) {
     onChange(
       updateEvent(data, eventId, (event) => ({
@@ -177,6 +206,11 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     if (editing?.taskKey === key) setEditing(null);
   }
 
+  /**
+   * 입력 중인 draftText를 새 할 일로 이벤트에 추가한다.
+   * 특이사항: 담당 부서가 비어 있으면 기본 부서(defaultRole)를 사용하며, 추가 후 해당
+   * 부서 그룹이 접혀 있었다면 자동으로 펼친다.
+   */
   function addTask(eventId: string, role: string) {
     const text = draftText.trim();
     if (!text) return;
@@ -214,6 +248,9 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     return !collapsed.has(roleKey(eventId, role));
   }
 
+  /**
+   * 지정한 행사-부서 그룹의 접힘/펼침 상태를 반전시킨다.
+   */
   function toggleRole(eventId: string, role: string) {
     const key = roleKey(eventId, role);
     setCollapsed((prev) => {
@@ -224,6 +261,10 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     });
   }
 
+  /**
+   * 지정한 행사-부서에 새 할 일을 추가하는 입력 폼을 연다.
+   * 특이사항: 대상 그룹이 접혀 있으면 자동으로 펼치고, 입력값(draftText)을 초기화한다.
+   */
   function startAdd(eventId: string, role: string) {
     setCollapsed((prev) => {
       const key = roleKey(eventId, role);
@@ -241,12 +282,23 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     setDraftText("");
   }
 
+  /**
+   * 특정 행사에서 담당 부서로 선택할 수 있는 후보 목록을 만든다.
+   * 특이사항: 부서 명단(roster)과 이미 그 행사에서 쓰이고 있는 담당 부서명을 합쳐 중복
+   * 없이 반환하며, 후보가 하나도 없으면 "공통"을 기본값으로 준다.
+   */
   function roleChoicesFor(event: ClubEvent): string[] {
     const used = event.tasks.map((task) => task.assigned_role.trim() || COMMON_ROLE);
     const choices = [...new Set([...roster, ...used])].filter(Boolean);
     return choices.length > 0 ? choices : [COMMON_ROLE];
   }
 
+  /**
+   * 행사 날짜를 변경하고, 날짜에서 뽑아낸 월을 target_month에도 반영한다.
+   * @param value - "YYYY-MM-DD" 형식의 날짜 문자열
+   * 특이사항: 형식이 올바르지 않으면 아무 것도 하지 않으며, 새 월이 현재 선택된 학기
+   * 탭과 다르면 학기 탭도 그 월에 맞춰 자동으로 전환한다.
+   */
   function setEventDate(eventId: string, value: string) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
     const month = Number(value.slice(5, 7));
@@ -263,12 +315,19 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     }
   }
 
+  /**
+   * 행사의 분류(카테고리)를 변경한다. 빈 값이면 무시한다.
+   */
   function setEventCategory(eventId: string, category: string) {
     const next = category.trim();
     if (!next) return;
     onChange(updateEvent(data, eventId, (event) => ({ ...event, category: next })));
   }
 
+  /**
+   * 수정 중이던 행사 이름(eventNameDraft)을 저장하고 수정 모드를 종료한다.
+   * 특이사항: 입력값이 비어 있으면 저장하지 않고 수정 모드만 종료한다.
+   */
   function saveEventName() {
     if (!editingEventId) return;
     const nextName = eventNameDraft.trim();
@@ -278,6 +337,10 @@ export function ManualPreview({ data, categoryOptions, onChange, onApply, onBack
     setEditingEventId(null);
   }
 
+  /**
+   * 지정한 행사를 삭제하고, 그 행사에 딸려 있던 할 일들의 완료 체크 상태와 현재
+   * 수정/추가 중이던 상태(editing, editingEventId, openCatId, addingTo)를 함께 정리한다.
+   */
   function removeEvent(eventId: string) {
     const target = data.events.find((event) => event.event_id === eventId);
     onChange({

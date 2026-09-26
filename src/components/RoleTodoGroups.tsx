@@ -86,6 +86,9 @@ function toggleStyle(active: boolean): CSSProperties {
   };
 }
 
+/**
+ * 완료된 할 일을 보이거나 숨기는 토글 버튼.
+ */
 export function CompletedTodosToggle({
   showDone,
   onToggle,
@@ -100,6 +103,9 @@ export function CompletedTodosToggle({
   );
 }
 
+/**
+ * 할 일 목록의 "수정 모드"를 켜고 끄는 토글 버튼.
+ */
 export function TodoEditModeToggle({
   editing,
   onToggle,
@@ -120,6 +126,9 @@ export function TodoEditModeToggle({
   );
 }
 
+/**
+ * 부서(역할)별 할 일 그룹의 제목 줄. 클릭하면 그룹을 접거나 펼친다.
+ */
 export function RoleGroupHeader({
   role,
   roster,
@@ -157,6 +166,10 @@ export function RoleGroupHeader({
   );
 }
 
+/**
+ * 할 일 한 개에 대한 편집 액션 버튼들.
+ * 특이사항: 이름 수정 중일 때는 저장/취소 버튼을, 아닐 때는 편집/삭제 버튼을 보여준다.
+ */
 export function TodoItemActions({
   isEditingName,
   onSave,
@@ -211,6 +224,11 @@ export function TodoItemActions({
   );
 }
 
+/**
+ * 새 할 일을 입력받는 폼(입력창 + 추가/취소 버튼).
+ * @param extra - 담당 부서 선택 등 폼 아래에 추가로 넣을 UI
+ * 특이사항: Enter 키로 제출, Escape 키로 취소할 수 있다.
+ */
 export function TodoAddForm({
   draft,
   onDraft,
@@ -258,6 +276,9 @@ export function TodoAddForm({
   );
 }
 
+/**
+ * 새 할 일을 추가할 때 어느 행사에 속하게 할지 고르는 select 컴포넌트.
+ */
 function AddEventPicker({
   value,
   choices,
@@ -285,6 +306,9 @@ function AddEventPicker({
   );
 }
 
+/**
+ * "+ 새 TO-DO 추가" 버튼. 클릭하면 추가 폼을 연다.
+ */
 export function TodoAddButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -297,6 +321,10 @@ export function TodoAddButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/**
+ * 마감 입력 문자열(예: "D-7", "7")에서 숫자만 뽑아낸다.
+ * @returns 파싱된 숫자, 숫자 형식이 아니면 null
+ */
 function parseDaysBefore(raw: string): number | null {
   const match = /^(?:D-?)?(\d+)$/i.exec(raw.trim());
   if (!match) return null;
@@ -322,6 +350,12 @@ type RoleTodoGroupsProps = {
   onPatch: (eventId: string, patch: ClubEventPatch) => void;
 };
 
+/**
+ * 할 일 목록을 부서별로 묶어서 보여주고, 완료 표시/수정 모드/추가까지 관리하는 목록 컴포넌트.
+ * variant에 따라 "panel"(진행 패널) 또는 "tasks"(할 일 목록 화면) 모양으로 다르게 그려진다.
+ * 특이사항: resetKey가 바뀌면 펼침/접힘, 수정 모드, 입력 중이던 값 등 내부 상태가 전부
+ * 초기화된다.
+ */
 export function RoleTodoGroups({
   heading,
   items,
@@ -361,6 +395,9 @@ export function RoleTodoGroups({
   const addTargets = eventChoices.length > 0 ? eventChoices : defaultEventId ? [{ id: defaultEventId, title: "" }] : [];
   const canAdd = canEdit && addTargets.length > 0;
 
+  /**
+   * 할 일들을 부서별로 묶고, showDone에 따라 화면에 보여줄 목록(visible)을 걸러낸다.
+   */
   const groups = useMemo(() => {
     return groupByRole(items, roster, (item) => item.role)
       .map((group) => {
@@ -375,6 +412,10 @@ export function RoleTodoGroups({
       .filter((group) => group.visible.length > 0);
   }, [items, roster, showDone]);
 
+  /**
+   * 부서 선택지 목록을 만든다. 담당 부서 명단(roster)과 실제 사용 중인 담당 부서명을
+   * 합쳐 중복 없이 반환하며, 후보가 없으면 "공통"을 기본값으로 준다.
+   */
   const roleChoices = useMemo(() => {
     const used = items.map((item) => item.role.trim() || COMMON_ROLE);
     const choices = [...new Set([...roster, ...used])].filter(Boolean);
@@ -387,6 +428,9 @@ export function RoleTodoGroups({
     return !collapsed.has(role);
   }
 
+  /**
+   * 지정한 부서 그룹의 접힘/펼침 상태를 반전시킨다.
+   */
   function toggleRole(role: string) {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -396,6 +440,9 @@ export function RoleTodoGroups({
     });
   }
 
+  /**
+   * 지정한 부서 그룹이 접혀 있으면 펼친다(이미 펼쳐져 있으면 아무 것도 하지 않는다).
+   */
   function expandRole(role: string) {
     setCollapsed((prev) => {
       if (!prev.has(role)) return prev;
@@ -405,30 +452,50 @@ export function RoleTodoGroups({
     });
   }
 
+  /**
+   * 할 일 이름 수정을 시작한다.
+   * 특이사항: 마감일(D-Day) 수정 중이었다면 그 상태는 해제한다(이름 수정과 마감일
+   * 수정을 동시에 하지 않는다).
+   */
   function startTaskEdit(item: RoleTodoItem) {
     setEditingDdayId(null);
     setEditingTaskId(item.id);
     setTaskDraft(item.text);
   }
 
+  /**
+   * 수정 중이던 할 일 이름을 저장한다.
+   * 특이사항: 값이 비어 있거나 기존 값과 같으면 저장하지 않고 수정 모드만 종료한다.
+   */
   function saveTask(item: RoleTodoItem) {
     const next = taskDraft.trim();
     if (next && next !== item.text) onPatch(item.eventId, { task: { id: item.id, task_name: next } });
     setEditingTaskId(null);
   }
 
+  /**
+   * 할 일을 삭제하고, 그 항목에 대해 진행 중이던 이름/마감일 수정 상태도 함께 정리한다.
+   */
   function removeTask(item: RoleTodoItem) {
     if (editingDdayId === item.id) setEditingDdayId(null);
     if (editingTaskId === item.id) setEditingTaskId(null);
     onPatch(item.eventId, { task: { id: item.id, remove: true } });
   }
 
+  /**
+   * 마감일(D-Day) 수정을 시작한다.
+   * 특이사항: 할 일 이름 수정 중이었다면 그 상태는 해제한다.
+   */
   function startDdayEdit(item: RoleTodoItem) {
     setEditingTaskId(null);
     setEditingDdayId(item.id);
     setDdayDraft(String(item.daysBefore));
   }
 
+  /**
+   * 수정 중이던 마감일 입력값을 파싱해서 저장한다.
+   * 특이사항: 숫자로 해석되지 않거나 기존 값과 같으면 저장하지 않는다.
+   */
   function saveDday(item: RoleTodoItem) {
     const parsed = parseDaysBefore(ddayDraft);
     if (parsed !== null && parsed !== item.daysBefore) {
@@ -437,6 +504,11 @@ export function RoleTodoGroups({
     setEditingDdayId(null);
   }
 
+  /**
+   * 새 할 일 추가 폼을 연다.
+   * 특이사항: 기본 담당 부서는 화면에 보이는 첫 번째 그룹의 부서(또는 후보 목록의 첫
+   * 값)로 정하고, 그 그룹이 접혀 있으면 펼친다.
+   */
   function startAdd() {
     const role = groups[0]?.role ?? roleChoices[0] ?? COMMON_ROLE;
     expandRole(role);
@@ -445,6 +517,12 @@ export function RoleTodoGroups({
     setAddEventId(defaultEventId ?? eventChoices[0]?.id ?? addEventId);
   }
 
+  /**
+   * 입력된 내용으로 새 할 일을 추가한다.
+   * @param role - 새 할 일의 담당 부서
+   * 특이사항: 입력값이 비어 있거나 추가할 행사(eventId)가 정해지지 않으면 아무 것도 하지
+   * 않는다.
+   */
   function submitAdd(role: string) {
     const text = draftText.trim();
     const eventId = defaultEventId ?? addEventId;
@@ -461,6 +539,9 @@ export function RoleTodoGroups({
     setDraftText("");
   }
 
+  /**
+   * 수정 모드를 끄고, 진행 중이던 이름/마감일 수정과 할 일 추가 상태를 모두 정리한다.
+   */
   function exitManageMode() {
     setManageMode(false);
     setEditingTaskId(null);
@@ -585,6 +666,12 @@ export function RoleTodoGroups({
   );
 }
 
+/**
+ * 할 일 한 줄을 그리는 내부 컴포넌트.
+ * 특이사항: variant가 "tasks"이면 카드형 레이아웃(체크박스+제목+태그+마감 배지)으로,
+ * 그 외("panel")에는 좀 더 간단한 한 줄 레이아웃으로 그린다. 마감일/이름 수정 UI는
+ * showChrome(수정 모드이고 해당 항목이 편집 가능할 때)일 때만 보여준다.
+ */
 function TodoRow({
   item,
   variant,

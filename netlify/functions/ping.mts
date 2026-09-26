@@ -2,6 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL_ID = process.env.CLAUDE_MODEL_ID ?? "claude-sonnet-5";
 
+/**
+ * Anthropic API 연결을 확인하기 위한 헬스체크 핸들러. "ping" 메시지를 모델에 보내고
+ * 응답을 그대로 반환한다.
+ */
 export default async () => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json(

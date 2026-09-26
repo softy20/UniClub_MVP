@@ -27,10 +27,19 @@ type ClubMemberRow = {
   clubs: { id: string; name: string } | null;
 };
 
+/**
+ * 로그인한 사용자가 속한 동아리 목록을 불러오고, 동아리 생성/초대 발급/초대 사용 기능을 제공하는 훅.
+ * @param userId - 목록을 조회할 사용자 id. 바뀌면 목록을 다시 불러온다.
+ * @returns clubs, loading과 refresh/createClub/createInvite/redeemInvite 함수
+ */
 export function useClubs(userId: string) {
   const [clubs, setClubs] = useState<ClubSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * 사용자가 속한 동아리 목록을 Supabase에서 다시 조회해 clubs 상태를 갱신한다.
+   * 특이사항: clubs 관계가 null인 행(탈퇴 등으로 끊어진 멤버십)은 걸러낸다.
+   */
   const refresh = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -54,6 +63,11 @@ export function useClubs(userId: string) {
     refresh();
   }, [refresh]);
 
+  /**
+   * 새 동아리를 생성하고 나를 owner로 등록한다.
+   * 특이사항: 실제 생성 로직은 Supabase의 SECURITY DEFINER 함수 create_club이 처리하며,
+   * 성공 후 목록을 새로고침(refresh)한다.
+   */
   async function createClub(name: string): Promise<string> {
     const { data, error } = await supabase.rpc("create_club", { p_name: name });
     if (error) throw new Error(error.message);
@@ -61,12 +75,17 @@ export function useClubs(userId: string) {
     return data as string;
   }
 
+  /** 특정 동아리의 초대 토큰을 발급받는다(create_invite RPC 호출). */
   async function createInvite(clubId: string): Promise<string> {
     const { data, error } = await supabase.rpc("create_invite", { p_club_id: clubId });
     if (error) throw new Error(error.message);
     return data as string;
   }
 
+  /**
+   * 초대 토큰을 사용해 해당 동아리의 member가 된다.
+   * 특이사항: redeem_invite RPC 호출 성공 후 목록을 새로고침(refresh)한다.
+   */
   async function redeemInvite(token: string): Promise<string> {
     const { data, error } = await supabase.rpc("redeem_invite", { p_token: token });
     if (error) throw new Error(error.message);

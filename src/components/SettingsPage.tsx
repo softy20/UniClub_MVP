@@ -25,9 +25,15 @@ type SettingsPageProps = {
   onSignOut: () => void;
 };
 
+/**
+ * 설정 화면 컴포넌트. 게스트 모드에서는 이 기기의 임시 데이터 현황과 초기화 버튼을,
+ * 로그인 사용자에게는 계정 정보와 로그아웃 버튼을 보여준다.
+ * 특이사항: confirming state로 게스트 데이터 초기화 버튼을 두 번 눌러야 실제로 지워지게(오조작 방지) 한다.
+ */
 export function SettingsPage({ isGuest, userEmail, data, seasons, onClearGuestData, onSignOut }: SettingsPageProps) {
   const [confirming, setConfirming] = useState(false);
 
+  /** 게스트 데이터 초기화 버튼 클릭을 처리한다. 첫 클릭은 확인 상태로 전환하고, 두 번째 클릭에서 실제로 지운다. */
   function handleClear() {
     if (!confirming) {
       setConfirming(true);

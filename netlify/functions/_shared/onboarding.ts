@@ -48,6 +48,11 @@ const QUESTION_ITEM_SCHEMA = {
   },
 } as const;
 
+/**
+ * 온보딩 첫 턴(start-onboarding)에서 쓰는 시스템 프롬프트를 만든다. 매뉴얼에서 부서/직책
+ * 초안과 행사 분류 초안을 추출하고 확인 질문 1~2개를 propose_club_roles 도구로만
+ * 제출하도록 모델에 지시한다.
+ */
 export function buildStartSystem(currentYear: number): string {
   return `너는 동아리 인수인계 매뉴얼에서 부서/직책 초안과 행사 분류 초안을 추출하는 온보딩 도우미다.
 
@@ -78,6 +83,11 @@ academic_year는 반드시 ${currentYear}로 설정하라. 문서에 과거 연�
 - 반드시 propose_club_roles 도구만 호출하라.`;
 }
 
+/**
+ * 온보딩 후속 턴(answer-onboarding)에서 쓰는 시스템 프롬프트를 만든다. 부서표와 행사
+ * 분류를 짧게 확정하도록, ask_clarifying_questions 또는 lock_club_profile 중 하나를
+ * 호출하도록 모델에 지시한다.
+ */
 export function buildAnswerSystem(currentYear: number): string {
   return `너는 동아리 부서표와 행사 분류를 짧게 확정하는 온보딩 도우미다.
 
@@ -194,6 +204,10 @@ export type LockPayload = {
   message: string;
 };
 
+/**
+ * propose_club_roles 도구 호출의 input이 DraftRolesPayload 형태(부서/분류 초안 + 질문
+ * 1~2개 + 안내 메시지)를 만족하는지 검사한다.
+ */
 export function isDraftRolesPayload(value: unknown): value is DraftRolesPayload {
   if (!isRecord(value)) return false;
   const categories = Array.isArray(value.draft_categories) ? value.draft_categories : [];
@@ -211,6 +225,10 @@ export function isDraftRolesPayload(value: unknown): value is DraftRolesPayload 
   );
 }
 
+/**
+ * ask_clarifying_questions 도구 호출의 input이 ClarifyingPayload 형태를 만족하는지
+ * 검사한다.
+ */
 export function isClarifyingPayload(value: unknown): value is ClarifyingPayload {
   if (!isRecord(value)) return false;
   const categories = Array.isArray(value.draft_categories) ? value.draft_categories : [];
@@ -226,6 +244,10 @@ export function isClarifyingPayload(value: unknown): value is ClarifyingPayload 
   );
 }
 
+/**
+ * lock_club_profile 도구 호출의 input이 LockPayload 형태(확정된 부서/분류 목록과 기본값)를
+ * 만족하는지 검사한다.
+ */
 export function isLockPayload(value: unknown): value is LockPayload {
   if (!isRecord(value)) return false;
   const categories = Array.isArray(value.categories) ? value.categories : [];

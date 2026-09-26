@@ -30,11 +30,21 @@ type ClubGateProps = {
 
 const ACTIVE_CLUB_KEY_PREFIX = "uniclub-active-club";
 
+/**
+ * 현재 주소(pathname)가 "/invite/토큰" 형태인지 확인하고, 맞다면 토큰 값을 뽑아냅니다.
+ * @returns 초대 토큰 문자열, 초대 주소가 아니면 null
+ */
 function readInviteTokenFromUrl(): string | null {
   const match = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/);
   return match ? match[1] : null;
 }
 
+/**
+ * 로그인은 됐지만 활성 동아리가 아직 정해지지 않은 사용자를 위한 게이트 컴포넌트.
+ * 초대 링크 자동 처리, 마지막으로 보던 동아리 복원, 동아리 없을 때 생성 화면 표시,
+ * 활성 동아리가 정해지면 App 렌더링까지 이어지는 흐름을 관리합니다.
+ * 특이사항: activeClubId가 정해지기 전까지는 App을 그리지 않고 로딩/생성 화면만 보여줍니다.
+ */
 export function ClubGate({ session, onSignOut }: ClubGateProps) {
   const userId = session.user.id;
   const { clubs, loading, createClub, createInvite, redeemInvite } = useClubs(userId);
@@ -48,6 +58,8 @@ export function ClubGate({ session, onSignOut }: ClubGateProps) {
 
   const storageKey = useMemo(() => `${ACTIVE_CLUB_KEY_PREFIX}:${userId}`, [userId]);
 
+  // 주소에 초대 토큰이 있으면 자동으로 초대를 사용(가입)하고, 성공/실패와 관계없이
+  // 주소는 "/"로 정리한다. 언마운트 시 상태 갱신을 막기 위해 cancelled 플래그를 둔다.
   useEffect(() => {
     if (!pendingInvite) return;
     let cancelled = false;
@@ -71,6 +83,8 @@ export function ClubGate({ session, onSignOut }: ClubGateProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingInvite]);
 
+  // 동아리 목록이 준비되면, 저장해둔 마지막 활성 동아리가 아직도 소속되어 있는지 확인하고
+  // 있으면 그걸, 없으면 목록의 첫 동아리를 활성 동아리로 정한다.
   useEffect(() => {
     if (activeClubId || loading || clubs.length === 0) return;
     const saved = localStorage.getItem(storageKey);
@@ -78,11 +92,20 @@ export function ClubGate({ session, onSignOut }: ClubGateProps) {
     setActiveClubId(stillMember ? saved : clubs[0].id);
   }, [activeClubId, loading, clubs, storageKey]);
 
+  /**
+   * 활성 동아리를 바꾸고, 다음 방문 때도 이어서 쓸 수 있도록 브라우저에 저장합니다.
+   * @param clubId - 새로 활성화할 동아리 id
+   */
   function switchClub(clubId: string) {
     setActiveClubId(clubId);
     localStorage.setItem(storageKey, clubId);
   }
 
+  /**
+   * 동아리 생성 폼 제출을 처리합니다: 입력된 이름으로 동아리를 만들고, 성공하면
+   * 그 동아리로 바로 전환합니다.
+   * 특이사항: 이름이 빈 문자열(공백 제거 후)이면 아무 것도 하지 않고 조용히 종료합니다.
+   */
   async function handleCreateSubmit(event: FormEvent) {
     event.preventDefault();
     const name = draftName.trim();

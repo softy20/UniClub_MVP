@@ -40,6 +40,12 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { translateAuthError } from "../lib/authErrors";
 
+/**
+ * Supabase 로그인 세션을 구독하고 로그인/회원가입/로그아웃 함수를 제공하는 훅.
+ * @returns session, user, loading 상태와 signIn/signUp/signInWithGoogle/signOut 함수
+ * 특이사항: 마운트 시 현재 세션을 조회하고, onAuthStateChange로 이후 변화를 실시간 반영하며,
+ * 언마운트 시 구독을 해제한다.
+ */
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,21 +61,34 @@ export function useAuth() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  /**
+   * 이메일/비밀번호로 로그인한다.
+   * 특이사항: 실패 시 Supabase 원본 에러 메시지를 translateAuthError로 한국어 메시지로 바꿔 던진다.
+   */
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(translateAuthError(error.message));
   }
 
+  /**
+   * 이메일/비밀번호로 회원가입한다.
+   * 특이사항: 실패 시 에러 메시지를 translateAuthError로 한국어로 변환해 던진다.
+   */
   async function signUp(email: string, password: string) {
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(translateAuthError(error.message));
   }
 
+  /**
+   * 구글 OAuth로 로그인한다.
+   * 특이사항: 실패 시 에러 메시지를 translateAuthError로 한국어로 변환해 던진다.
+   */
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
     if (error) throw new Error(translateAuthError(error.message));
   }
 
+  /** 현재 세션을 로그아웃한다. */
   async function signOut() {
     await supabase.auth.signOut();
   }

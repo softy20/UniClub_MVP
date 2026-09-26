@@ -40,6 +40,10 @@ type AiParsePageProps = {
   onApply: (data: ClubData) => void;
 };
 
+/**
+ * ManualImportWizard를 감싸서 보여주는 데이터 가져오기 탭 컴포넌트.
+ * 특이사항: 자체 상태 없이 existingData/onApply를 그대로 ManualImportWizard에 전달만 한다.
+ */
 export function AiParsePage({ existingData, onApply }: AiParsePageProps) {
   return <ManualImportWizard existingData={existingData} onApply={onApply} />;
 }

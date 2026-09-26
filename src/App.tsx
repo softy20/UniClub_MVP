@@ -83,6 +83,11 @@ type AppProps = {
 
 const GUEST_CLUB_ID = "guest";
 
+/**
+ * 로그인/게스트 사용자에게 보여주는 메인 화면 컴포넌트. 사이드바/모바일 네비게이션과
+ * 대시보드/캘린더/할 일/AI 입력/설정 페이지 전환, 동아리 데이터 로딩·저장, 할 일 완료 체크,
+ * 행사 상세 패널 열기/닫기, 학년도(시즌) 전환을 총괄합니다.
+ */
 export default function App({
   clubId = GUEST_CLUB_ID,
   clubs = [],
@@ -111,6 +116,8 @@ export default function App({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goToday, setGoToday] = useState(false);
 
+  // 동아리(clubId) 또는 학년도(academicYear)가 바뀌면, 그 조합에 저장된 완료 체크
+  // 목록을 다시 불러와서 다른 시즌/동아리의 체크가 섞이지 않게 한다.
   useEffect(() => {
     setDone(loadDoneIds(clubId, academicYear));
   }, [clubId, academicYear]);
@@ -124,6 +131,11 @@ export default function App({
   const totalDone = events.reduce((sum, event) => sum + event.checklist.filter((item) => item.done).length, 0);
   const overallPct = totalTasks === 0 ? 0 : Math.round((totalDone / totalTasks) * 100);
 
+  /**
+   * 할 일(체크리스트 항목) 완료 상태를 켜고 끄고, 바뀐 완료 목록을 학년도 기준으로
+   * 브라우저에 저장합니다.
+   * @param id - 토글할 체크리스트 항목의 id
+   */
   function toggle(id: string) {
     setDone((prev) => {
       const next = new Set(prev);
@@ -155,6 +167,10 @@ export default function App({
     window.location.reload();
   }
 
+  /**
+   * 행사 정보를 수정하면서, 만약 이번 수정이 할 일 삭제(patch.task.remove)라면
+   * 그 할 일의 완료 체크 기록도 함께 지워서 데이터가 서로 어긋나지 않게 합니다.
+   */
   function patchEventAndSync(eventId: string, patch: ClubEventPatch) {
     if (patch.task?.remove) {
       setDone((prev) => {

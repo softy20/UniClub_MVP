@@ -10,6 +10,12 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPA
 // 요청을 보낸 사용자의 Authorization 헤더를 그대로 실어서 Supabase 클라이언트를 만든다.
 // 이러면 이 클라이언트로 하는 모든 쿼리(club_members 조회 등)는 그 사용자 권한
 // (RLS의 auth.uid())으로 실행된다.
+/**
+ * 요청의 Authorization 헤더를 그대로 실은 Supabase 클라이언트를 만든다.
+ * @param authHeader - "Bearer ..." 형태의 Authorization 헤더 값
+ * 특이사항: 이 클라이언트로 실행하는 쿼리는 요청자 권한(RLS의 auth.uid())으로 실행된다.
+ * SUPABASE_URL/ANON_KEY 환경변수가 없으면 예외를 던진다.
+ */
 export function getRequestSupabase(authHeader: string): SupabaseClient {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error("SUPABASE_URL / SUPABASE_ANON_KEY 환경변수가 설정되지 않았습니다.");
@@ -20,6 +26,12 @@ export function getRequestSupabase(authHeader: string): SupabaseClient {
   });
 }
 
+/**
+ * 요청 헤더의 Authorization 토큰을 검증해서 로그인한 사용자와, 그 사용자 권한으로 동작하는
+ * Supabase 클라이언트를 함께 반환한다.
+ * @returns 토큰이 유효하면 { client, user }, Authorization 헤더가 없거나 토큰이
+ * 유효하지 않으면 null
+ */
 export async function getRequestUser(req: Request): Promise<{ client: SupabaseClient; user: User } | null> {
   const authHeader = req.headers.get("authorization");
   if (!authHeader) return null;
@@ -32,6 +44,9 @@ export async function getRequestUser(req: Request): Promise<{ client: SupabaseCl
   return { client, user: data.user };
 }
 
+/**
+ * 해당 사용자가 이 동아리(clubId)의 club_members에 등록되어 있는지 확인한다.
+ */
 export async function isClubMember(client: SupabaseClient, clubId: string, userId: string): Promise<boolean> {
   const { data } = await client
     .from("club_members")

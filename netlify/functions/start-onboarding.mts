@@ -26,6 +26,12 @@ type StartBody = {
   file?: unknown;
 };
 
+/**
+ * 온보딩 첫 턴을 처리하는 Netlify 함수 핸들러. 업로드된 매뉴얼(텍스트 또는 파일)에서
+ * 부서/직책 초안과 행사 분류 초안, 확인 질문 1~2개를 모델로 뽑아 반환한다.
+ * 특이사항: 동아리 이름이 모호하거나(withClubNameQuestion) 부서/분류 초안이 비어 있으면
+ * (withEmptyRolesQuestion, withCategoriesQuestion) 관련 확인 질문을 자동으로 끼워 넣는다.
+ */
 export default async (req: Request) => {
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405);

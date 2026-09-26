@@ -39,6 +39,10 @@ import { dayDiff } from "../lib/board";
 import { monthCells, WEEKDAYS } from "../lib/calendar";
 import { categoryStyle } from "../lib/ops";
 
+/**
+ * "YYYY-MM-DD" 형식의 날짜 문자열을 연/월/일 숫자로 분해한다.
+ * @returns 형식이 맞지 않거나 월/일이 범위를 벗어나면 null
+ */
 export function isoDateParts(iso: string): { year: number; month: number; day: number } | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   const year = Number(iso.slice(0, 4));
@@ -48,12 +52,18 @@ export function isoDateParts(iso: string): { year: number; month: number; day: n
   return { year, month, day };
 }
 
+/**
+ * "YYYY-MM-DD" 문자열을 실제 Date 객체로 바꾼다.
+ * 특이사항: 시간대 경계에서 날짜가 하루 밀리는 것을 막기 위해 시각을 정오(12시)로 고정한다.
+ * @returns 파싱할 수 없으면 null
+ */
 export function dateFromIso(iso: string): Date | null {
   const parts = isoDateParts(iso);
   if (!parts) return null;
   return new Date(parts.year, parts.month - 1, parts.day, 12);
 }
 
+/** 선택된 날짜(iso)를 "M/D  D-n" 형태의 표시용 라벨로 만든다. 값이 없거나 무효하면 안내 문구를 반환한다. */
 function formatPickedDateLabel(iso: string, today: Date): string {
   const parts = isoDateParts(iso);
   const date = dateFromIso(iso);
@@ -63,6 +73,10 @@ function formatPickedDateLabel(iso: string, today: Date): string {
   return `${parts.month}/${parts.day}  ${dLabel}`;
 }
 
+/**
+ * 달력 팝업이 처음 열릴 때 보여줄 연/월을 정한다.
+ * 특이사항: 이미 선택된 값(value)이 있으면 그 달을, 없으면 defaultMonth(있다면) 또는 오늘 날짜의 달을 사용한다.
+ */
 function viewFromValue(value: string, today: Date, defaultMonth?: number) {
   const date = dateFromIso(value);
   if (date) return { year: date.getFullYear(), month: date.getMonth() };
@@ -71,6 +85,10 @@ function viewFromValue(value: string, today: Date, defaultMonth?: number) {
   return { year: today.getFullYear(), month };
 }
 
+/**
+ * 버튼을 누르면 카테고리 목록이 드롭다운으로 열리고, 선택하면 색깔 있는 태그로 표시되는 카테고리 선택 컴포넌트.
+ * 드롭다운 열림/닫힘 상태(open)는 부모가 관리하며, 이 컴포넌트는 선택된 값 표시와 목록 렌더링만 담당한다.
+ */
 export function EventCategoryButton({
   category,
   choices,
@@ -143,6 +161,12 @@ export function EventCategoryButton({
   );
 }
 
+/**
+ * 버튼을 누르면 작은 달력 팝업이 뜨고, 날짜를 클릭하면 선택되는 날짜 선택 컴포넌트.
+ * open(팝업 열림), jumpOpen(연도 점프 화면 열림), jumpYear(점프할 연도), anchor(팝업 좌표),
+ * view(팝업이 보여주는 연/월)를 내부 상태로 관리한다.
+ * 특이사항: 팝업은 createPortal로 document.body에 그려지며, 바깥 클릭/Esc/스크롤/창 크기 변경 시 자동으로 닫힌다.
+ */
 export function EventDateButton({
   value,
   today,
@@ -207,6 +231,12 @@ export function EventDateButton({
     };
   }, [open]);
 
+  /**
+   * 버튼의 화면상 위치를 기준으로 팝업이 표시될 좌표를 계산하고 연다.
+   * 특이사항: align(start/center/end)에 따라 팝업의 가로 정렬 기준점을 다르게 잡고,
+   * 화면 밖으로 넘치지 않도록 좌표를 보정하며, 아래쪽 공간이 부족하면 버튼 위로 띄운다.
+   * 팝업이 열릴 때마다 현재 선택값(value) 기준으로 view/jumpYear를 다시 계산해 초기화한다.
+   */
   function placeAndOpen() {
     const rect = wrapRef.current?.getBoundingClientRect();
     if (rect) {
@@ -232,6 +262,11 @@ export function EventDateButton({
     setOpen(true);
   }
 
+  /**
+   * 팝업이 보여주는 달을 delta만큼 이동한다.
+   * 특이사항: Date 생성자에 month + delta를 그대로 넘겨 연도 경계(1월 이전/12월 이후)를
+   * JS의 날짜 자동 보정에 맡긴다.
+   */
   function shiftMonth(delta: number) {
     setView((current) => {
       const next = new Date(current.year, current.month + delta, 1);

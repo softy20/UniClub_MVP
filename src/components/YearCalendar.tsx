@@ -57,6 +57,10 @@ type YearCalendarProps = {
   clock: KstClock;
 };
 
+/**
+ * localStorage에 저장된 행사별 첨부 사진 목록을 불러온다.
+ * 특이사항: 저장된 값이 없거나 JSON 파싱에 실패하면 빈 객체를 반환해 화면이 깨지지 않게 한다.
+ */
 function loadPhotos(): Record<string, string[]> {
   try {
     const raw = localStorage.getItem(PHOTO_KEY);
@@ -71,6 +75,11 @@ function savePhotos(photos: Record<string, string[]>) {
   localStorage.setItem(PHOTO_KEY, JSON.stringify(photos));
 }
 
+/**
+ * 한 해의 일정을 월별 달력으로 보여주고, 날짜를 선택하면 그날의 행사와 사진을 보여주는 화면.
+ * cursor(현재 보고 있는 달), filter(선택된 카테고리 범례), selected(클릭한 날짜),
+ * photos(날짜별 첨부 사진, localStorage와 동기화), pickerOpen/pickerYear(연/월 선택 팝업)를 상태로 관리한다.
+ */
 export function YearCalendar({ data, clock }: YearCalendarProps) {
   const allEvents = useMemo(() => buildCalendarEvents(data), [data]);
   const [cursor, setCursor] = useState(() => {
@@ -121,6 +130,7 @@ export function YearCalendar({ data, clock }: YearCalendarProps) {
     setPickerOpen(false);
   }
 
+  /** 연/월 선택 팝업을 열고 닫는다. 열 때는 현재 보고 있는 연도로 pickerYear를 초기화한다. */
   function togglePicker() {
     setPickerOpen((open) => {
       if (!open) setPickerYear(year);
@@ -151,6 +161,10 @@ export function YearCalendar({ data, clock }: YearCalendarProps) {
     };
   }, [pickerOpen]);
 
+  /**
+   * 선택한 이미지 파일을 읽어 행사(eventId)의 사진 목록에 추가하고 localStorage에 저장한다.
+   * 특이사항: FileReader로 파일을 data URL 문자열로 변환한 뒤 비동기 콜백(onload)에서 상태를 갱신한다.
+   */
   function addPhoto(eventId: string, file: File) {
     const reader = new FileReader();
     reader.onload = () => {

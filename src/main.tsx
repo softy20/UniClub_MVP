@@ -39,6 +39,10 @@ import { ClubGate } from "./components/ClubGate";
 import { useAuth } from "./hooks/useAuth";
 import "./index.css";
 
+/**
+ * 로그인 상태(useAuth)에 따라 로딩 화면 / 로그인 화면(AuthGate) / 게스트 모드(App) /
+ * 동아리 선택 게이트(ClubGate)를 갈아 끼워서 보여주는 최상위 컴포넌트.
+ */
 function Root() {
   const { session, loading, signIn, signUp, signInWithGoogle, signOut } = useAuth();
   const [guest, setGuest] = useState(false);

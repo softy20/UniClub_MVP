@@ -25,6 +25,9 @@ const STORAGE_KEY = "uniclub-guest-data-v1";
 // 게스트가 올린 매뉴얼과 데모 데이터가 섞여 추출되는 문제가 생긴다(예: 스쿠버 동아리
 // 데모 행사 + 코딩 동아리 실제 행사가 한 목록에 같이 나옴). 그래서 게스트 초기 상태는
 // 진짜로 빈 ClubData여야 한다.
+/**
+ * 게스트 모드 초기 상태로 쓸 빈 ClubData를 만든다.
+ */
 export function emptyClubData(academicYear = new Date().getFullYear()): ClubData {
   return {
     club_info: { club_name: "게스트 체험", academic_year: academicYear, roles: [] },
@@ -36,6 +39,10 @@ type GuestClubDataResponse = { ok: true; data: ClubData | null; seasons: number[
 
 type GuestBucket = Record<string, ClubData>;
 
+/**
+ * localStorage에 저장된 게스트 데이터 묶음(학년도별 ClubData)을 읽어온다.
+ * @returns 저장된 값이 없거나 파싱에 실패하면 빈 객체
+ */
 function loadBucket(): GuestBucket {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -50,6 +57,10 @@ function saveBucket(bucket: GuestBucket): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(bucket));
 }
 
+/**
+ * 게스트 모드의 학년도별 동아리 데이터를 서버 응답과 같은 모양({ ok, data, seasons })으로 조회한다.
+ * @param year - 조회할 학년도. 생략하면 저장된 시즌 중 가장 최근 연도를 사용한다.
+ */
 export function fetchGuestClubData(year?: number): GuestClubDataResponse {
   const bucket = loadBucket();
   const seasons = Object.keys(bucket)
@@ -61,16 +72,25 @@ export function fetchGuestClubData(year?: number): GuestClubDataResponse {
   return { ok: true, data, seasons };
 }
 
+/**
+ * 게스트 모드 동아리 데이터를 학년도를 키로 하여 localStorage에 저장한다.
+ */
 export function persistGuestClubData(data: ClubData): void {
   const bucket = loadBucket();
   bucket[String(data.club_info.academic_year)] = data;
   saveBucket(bucket);
 }
 
+/**
+ * 게스트 모드 데이터를 전부 삭제한다("데이터 초기화" 버튼에서 사용).
+ */
 export function clearGuestClubData(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+/**
+ * 게스트 모드로 저장된 데이터가 하나라도 있는지 확인한다.
+ */
 export function hasGuestClubData(): boolean {
   return Object.keys(loadBucket()).length > 0;
 }

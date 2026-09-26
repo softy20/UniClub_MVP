@@ -61,7 +61,12 @@ type SidebarProps = {
   overallPct: number;
 };
 
+/**
+ * 왼쪽에 고정되는 메뉴/네비게이션 바 컴포넌트. 자체 상태 없이 Props로만 동작하며,
+ * 현재 페이지 표시, 전체 진행률 막대, 카테고리별 행사 개수, 동아리 이름/설정 버튼을 렌더링합니다.
+ */
 export function Sidebar({ current, onNavigate, events, clubName, overallPct }: SidebarProps) {
+  // 카테고리 라벨별로 행사 개수를 센다. (개수가 0인 카테고리는 아래 목록에서 표시되지 않음)
   const counts = events.reduce(
     (acc, event) => {
       acc[event.category] = (acc[event.category] ?? 0) + 1;

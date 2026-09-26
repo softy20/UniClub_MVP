@@ -60,6 +60,11 @@ export const CAT_PALETTE = [
 
 export type CategoryStyle = { label: string; color: string; bg: string };
 
+/**
+ * 카테고리 텍스트를 보고 CAT_PALETTE에서 쓸 색상 인덱스를 정한다.
+ * @returns 미리 정해둔 키워드 규칙에 맞으면 그 인덱스, 아무 것도 안 걸리면 텍스트를 해시해서 팔레트 중 하나를 고정 배정
+ * 특이사항: 같은 카테고리 이름은 해시 방식 덕분에 항상 같은 색으로 나온다.
+ */
 function paletteIndex(text: string): number {
   if (/MT|엠티|수련회|워크숍|워크샵/i.test(text)) return 6;
   if (/봉사/.test(text)) return 5;
@@ -75,12 +80,20 @@ function paletteIndex(text: string): number {
   return Math.abs(hash) % CAT_PALETTE.length;
 }
 
+/**
+ * 카테고리 라벨에 어울리는 색상 스타일을 반환한다.
+ * 특이사항: 빈 문자열이면 "기타"로 대체한다.
+ */
 export function categoryStyle(label: string): CategoryStyle {
   const name = label.trim() || "기타";
   const pal = CAT_PALETTE[paletteIndex(name)];
   return { label: name, color: pal.color, bg: pal.bg };
 }
 
+/**
+ * 여러 행사에서 등장하는 카테고리 이름을 중복 없이, 등장 순서대로 뽑는다.
+ * 특이사항: 빈 카테고리는 "기타"로 취급한다.
+ */
 export function uniqueCategoryLabels(events: { category: string }[]): string[] {
   const seen = new Set<string>();
   const labels: string[] = [];
@@ -117,6 +130,13 @@ export type OpsEvent = {
 
 const COMMON_ROLE = "공통";
 
+/**
+ * 항목들을 담당자(role)별로 묶는다.
+ * @param roster - 담당자 표시 순서(역할 목록). roster에 없는 역할은 등장한 순서대로 뒤에 추가된다.
+ * @param roleOf - 항목에서 역할 이름을 뽑는 함수
+ * @returns roster + 추가 역할 순서대로, 실제로 항목이 있는 역할만 포함한 그룹 배열
+ * 특이사항: roleOf 결과가 빈 문자열이면 COMMON_ROLE("공통")로 묶인다.
+ */
 export function groupByRole<T>(
   items: T[],
   roster: string[],
@@ -136,12 +156,20 @@ export function groupByRole<T>(
   return order.filter((role) => buckets.has(role)).map((role) => ({ role, items: buckets.get(role)! }));
 }
 
+/**
+ * 남은 일수를 D-Day 문자열로 포맷한다.
+ * @returns 양수면 "D-N", 0이면 "D-0", 음수(지남)면 "D+N"
+ */
 export function formatDday(daysLeft: number): string {
   if (daysLeft > 0) return `D-${daysLeft}`;
   if (daysLeft === 0) return "D-0";
   return `D+${-daysLeft}`;
 }
 
+/**
+ * 운영 화면에 표시할 이벤트의 카테고리 라벨을 정한다.
+ * @returns 원본 카테고리가 있으면 그 값, 없고 선물(gift-로 시작하는 id)이면 "선물", 그 외에는 "기타"
+ */
 function eventCategoryLabel(sourceCategory: string | undefined, eventId: string): string {
   const fromSource = sourceCategory?.trim();
   if (fromSource) return fromSource;
@@ -149,6 +177,13 @@ function eventCategoryLabel(sourceCategory: string | undefined, eventId: string)
   return "기타";
 }
 
+/**
+ * 동아리 데이터로부터 운영 화면에 뿌릴 전체 이벤트 목록(체크리스트, D-Day 포함)을 만든다.
+ * @param done - 완료 처리된 체크리스트 항목 id 모음
+ * @returns 각 이벤트에 카테고리, D-Day, 체크리스트(완료 여부 포함) 등을 담은 OpsEvent 배열
+ * 특이사항: editable은 원본 ClubEvent(source)가 존재하는 항목(추출/등록된 행사)에서만 true가 되고,
+ *   선물처럼 원본 이벤트가 없는 항목은 false가 된다.
+ */
 export function buildOpsEvents(data: ClubData, today: Date, done: Set<string>): OpsEvent[] {
   const calendar = buildCalendarEvents(data);
   const byId = new Map(data.events.map((event) => [event.event_id, event]));

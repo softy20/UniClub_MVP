@@ -9,6 +9,11 @@ import { useEffect, useState } from "react";
 
 const MOBILE_MAX = 767;
 
+/**
+ * 현재 화면 너비가 모바일 구간(768px 미만)인지 구독해서 알려주는 훅.
+ * @returns 모바일 구간이면 true
+ * 특이사항: matchMedia change 이벤트로 리사이즈/뷰포트 변화를 실시간 반영하고, 언마운트 시 구독을 해제한다.
+ */
 export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === "undefined" ? false : window.innerWidth <= MOBILE_MAX,

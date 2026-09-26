@@ -63,6 +63,10 @@ type ClubTaskShape = Pick<
 >;
 type ClubEventShape = Pick<ClubEvent, "event_id" | "event_name" | "category" | "target_month" | "tasks">;
 
+/**
+ * 환경변수를 읽는다. Netlify 런타임의 `Netlify.env.get`을 먼저 시도하고, 없으면 Node의
+ * `process.env`로 폴백한다.
+ */
 function readEnv(name: string): string | undefined {
   const netlify = (
     globalThis as { Netlify?: { env?: { get?: (key: string) => string | undefined } } }
@@ -82,6 +86,9 @@ function errorResponse(message: string, status = 500): Response {
   return json(status, { ok: false, error: message });
 }
 
+/**
+ * 모델 응답 content 블록들 중 텍스트 블록만 골라 하나의 문자열로 합친다.
+ */
 function textFromContent(content: Anthropic.Message["content"]): string {
   return content
     .filter((block): block is Anthropic.TextBlock => block.type === "text")
@@ -90,6 +97,11 @@ function textFromContent(content: Anthropic.Message["content"]): string {
     .trim();
 }
 
+/**
+ * 모델 출력 문자열에서 코드펜스를 제거하고 첫 `{`~마지막 `}` 구간을 JSON으로 파싱한 뒤
+ * ClubData 형태인지 검사한다.
+ * 특이사항: JSON을 못 찾거나 스키마가 맞지 않으면 예외를 던진다.
+ */
 function parseModelJson(raw: string): ClubData {
   const stripped = raw
     .trim()
@@ -112,6 +124,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+/**
+ * 값이 ClubTask의 필수 필드(task_name, days_before_dday, assigned_role, is_mandatory)를
+ * 만족하는지 검사한다.
+ */
 function isClubTask(value: unknown): value is ClubTaskShape {
   if (!isRecord(value)) return false;
   return (
@@ -122,6 +138,10 @@ function isClubTask(value: unknown): value is ClubTaskShape {
   );
 }
 
+/**
+ * 값이 ClubEvent의 필수 필드를 만족하고, tasks 배열의 각 항목도 {@link isClubTask}를
+ * 통과하는지 검사한다.
+ */
 function isClubEvent(value: unknown): value is ClubEventShape {
   if (!isRecord(value)) return false;
   return (
@@ -134,6 +154,9 @@ function isClubEvent(value: unknown): value is ClubEventShape {
   );
 }
 
+/**
+ * 값이 ClubData(club_info + events 배열) 전체 형태를 만족하는지 검사한다.
+ */
 function isClubData(value: unknown): value is ClubData {
   if (!isRecord(value)) return false;
   const clubInfo = value.club_info;
@@ -146,6 +169,11 @@ function isClubData(value: unknown): value is ClubData {
   return events.every(isClubEvent);
 }
 
+/**
+ * (레거시/독립형) 매뉴얼 텍스트에서 연간 일정과 TO-DO를 추출하는 Netlify 함수 핸들러.
+ * ClubProfile 제약이 없는 초기 버전으로, 텍스트를 그대로 모델에 보내 자유 형식 JSON을
+ * 추출한 뒤 스키마 검증만 거쳐 반환한다.
+ */
 export default async (req: Request) => {
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405);

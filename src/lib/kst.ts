@@ -57,6 +57,10 @@ function partValue(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPa
   return parts.find((part) => part.type === type)?.value ?? "0";
 }
 
+/**
+ * 주어진 시각(기본값: 현재)을 한국 시간(KST) 기준 연/월/일/시/분/초/요일로 분해한다.
+ * @returns civil 필드에는 시:분:초를 정오로 고정한 Date가 담겨 "그 날짜"만 비교할 때 안전하게 쓸 수 있다.
+ */
 export function readKst(instant: Date = new Date()): KstClock {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: KST_TIMEZONE,
@@ -97,6 +101,9 @@ export function readKst(instant: Date = new Date()): KstClock {
   };
 }
 
+/**
+ * KstClock을 "2025.03.04 (화) 13:05" 형태의 문자열로 포맷한다.
+ */
 export function formatKstDateTime(clock: KstClock): string {
   const yyyy = String(clock.year);
   const mo = String(clock.month).padStart(2, "0");
@@ -106,6 +113,11 @@ export function formatKstDateTime(clock: KstClock): string {
   return `${yyyy}.${mo}.${dd} (${clock.weekday}) ${hh}:${mm}`;
 }
 
+/**
+ * 1초마다 갱신되는 현재 한국 시간을 제공하는 React 훅.
+ * 특이사항: 다음 정각(초 단위)에 맞춰 첫 타이머를 걸고, 그 이후 1초 간격 interval로 갱신한다.
+ *   매초 리렌더링을 유발하므로 시계 표시용 작은 컴포넌트에서만 쓰는 것이 좋다.
+ */
 export function useKstNow(): KstClock {
   const [clock, setClock] = useState(() => readKst());
 

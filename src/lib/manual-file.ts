@@ -62,6 +62,10 @@ function extensionOf(name: string): string {
   return index >= 0 ? name.slice(index).toLowerCase() : "";
 }
 
+/**
+ * 파일 확장자(및 mime type)를 보고 파일 종류를 구분한다.
+ * @returns "hwp"(변환 안내 대상), docx/pdf/text 중 하나, 또는 "unsupported"
+ */
 export function classifyManualFile(file: File): "hwp" | ManualFileKind | "unsupported" {
   const ext = extensionOf(file.name);
   if (ext === ".hwp" || ext === ".hwpx") return "hwp";
@@ -71,12 +75,21 @@ export function classifyManualFile(file: File): "hwp" | ManualFileKind | "unsupp
   return "unsupported";
 }
 
+/**
+ * 파일 종류(kind)에 맞는 media type을 반환한다.
+ * @returns text 종류는 file.type을 그대로 쓰되, 비어 있으면 "text/plain"으로 대체한다.
+ */
 function mimeFor(kind: ManualFileKind, file: File): string {
   if (kind === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   if (kind === "pdf") return "application/pdf";
   return file.type || "text/plain";
 }
 
+/**
+ * 파일을 base64 문자열로 읽는다(서버 API 전송용).
+ * @returns data URL의 "data:...;base64," 접두부를 제거한 순수 base64 문자열
+ * 특이사항: 파일 읽기에 실패하면 reject되므로 호출부에서 에러를 처리해야 한다.
+ */
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -90,6 +103,11 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+/**
+ * docx 파일에서 순수 텍스트만 추출한다(mammoth 라이브러리를 동적으로 불러와서 사용).
+ * 특이사항: 텍스트가 비어 있으면 자체 에러를 던지고, 그 외 파싱 실패는 모두 DOCX_FAIL_MESSAGE로 감싸서 던진다
+ *   (한글 파일을 잘못 올렸을 가능성을 사용자에게 안내하기 위함).
+ */
 async function extractDocxFile(file: File): Promise<string> {
   const loaded = await import("mammoth");
   try {
@@ -103,6 +121,13 @@ async function extractDocxFile(file: File): Promise<string> {
   }
 }
 
+/**
+ * 업로드한 매뉴얼 파일을 읽어서 API에 보낼 payload와 미리보기 텍스트를 만든다.
+ * @returns text/docx는 previewText에 텍스트가 담기고 payload.data는 비워지며,
+ *   pdf 등 바이너리는 payload.data에 base64가 담기고 previewText는 빈 문자열이 된다.
+ * 특이사항: hwp/hwpx, 미지원 형식, 크기 초과(4MB), 빈 파일인 경우 모두 Error를 던지므로
+ *   호출하는 쪽에서 반드시 try/catch로 감싸야 한다.
+ */
 export async function readManualFile(file: File): Promise<{ payload: ManualFilePayload; previewText: string }> {
   const kind = classifyManualFile(file);
   if (kind === "hwp") throw new Error(HWP_MESSAGE);
@@ -151,6 +176,10 @@ export async function readManualFile(file: File): Promise<{ payload: ManualFileP
   };
 }
 
+/**
+ * ManualFilePayload를 서버 API에 보낼 형태로 변환한다.
+ * @returns 파일이 없거나 텍스트로 처리된 경우(이미 previewText로 전달됨), data가 비어 있으면 undefined
+ */
 export function filePayloadForApi(file: ManualFilePayload | null): { name: string; media_type: string; data: string } | undefined {
   if (!file || file.kind === "text" || !file.data) return undefined;
   return { name: file.name, media_type: file.media_type, data: file.data };

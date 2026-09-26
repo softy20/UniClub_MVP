@@ -38,6 +38,10 @@ export type MonthHeadingHit = { month: number; index: number };
 const MONTH_HEADING_RE = /(?:^|\n)[ \t#\-]*((?:1[0-2]|[1-9]))\s*월/g;
 const MIN_MONTH_HEADINGS = 3;
 
+/**
+ * 텍스트에서 "N월" 형태의 제목(줄 시작 부분, 마크다운 기호 허용)을 모두 찾는다.
+ * @returns 찾은 월과 텍스트 내 위치(index) 목록
+ */
 export function monthHeadingHits(text: string): MonthHeadingHit[] {
   const hits: MonthHeadingHit[] = [];
   for (const match of text.matchAll(MONTH_HEADING_RE)) {
@@ -49,6 +53,10 @@ export function monthHeadingHits(text: string): MonthHeadingHit[] {
   return hits;
 }
 
+/**
+ * 텍스트가 "월별 일정표" 형식인지 판단한다.
+ * @returns 월 제목이 MIN_MONTH_HEADINGS(3)개 이상이면 true
+ */
 export function hasMonthSections(text: string): boolean {
   return monthHeadingHits(text).length >= MIN_MONTH_HEADINGS;
 }

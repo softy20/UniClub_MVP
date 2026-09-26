@@ -15,6 +15,10 @@ function seasonKey(clubId: string, year: number): string {
   return `${seasonKeyPrefix(clubId)}${year}`;
 }
 
+/**
+ * 이 동아리(clubId)에 저장된 시즌(학년도) 키들을 blob store에서 나열해 오름차순 연도
+ * 배열로 반환한다.
+ */
 async function listSeasonYears(store: Store, clubId: string): Promise<number[]> {
   const prefix = seasonKeyPrefix(clubId);
   const { blobs } = await store.list({ prefix });
@@ -24,6 +28,12 @@ async function listSeasonYears(store: Store, clubId: string): Promise<number[]> 
     .sort((a, b) => a - b);
 }
 
+/**
+ * 동아리별 연간 데이터(ClubData)를 조회/저장하는 Netlify 함수 핸들러.
+ * GET은 club/season 쿼리로 특정 학년도(생략 시 최신) 데이터와 저장된 시즌 목록을
+ * 반환하고, POST는 본문의 ClubData를 검증한 뒤 해당 학년도 키로 저장한다.
+ * 특이사항: 로그인 및 club_members 소속 확인(isClubMember)을 통과해야만 접근을 허용한다.
+ */
 export default async (req: Request) => {
   const auth = await getRequestUser(req);
   if (!auth) return errorResponse("로그인이 필요합니다.", 401);

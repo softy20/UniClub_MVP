@@ -49,6 +49,11 @@ type TasksPageProps = {
   onPatch: (eventId: string, patch: ClubEventPatch) => void;
 };
 
+/**
+ * 모든 행사의 할 일을 하나로 모아 부서별로 보여주는 화면 컴포넌트.
+ * 특이사항: 마감 임박 순(daysLeft)으로 정렬하고, active(카테고리 필터) state로 걸러낸 뒤 실제 렌더링은
+ * RoleTodoGroups에 위임한다. events가 바뀌어 카테고리 목록(categoryKey)이 달라지면 필터를 전체 선택으로 리셋한다.
+ */
 export function TasksPage({ events, roster, onToggle, onPatch }: TasksPageProps) {
   const categories = useMemo(() => uniqueCategoryLabels(events), [events]);
   const [active, setActive] = useState<Set<string>>(() => new Set(categories));
