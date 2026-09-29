@@ -10,7 +10,15 @@ import {
   withManualText,
   type ResolvedManual,
 } from "./_shared/manual-file.ts";
-import { coerceClubData, constrainClubData, isClubProfile, lockClubProfile, parseClubGenre } from "./_shared/schema.ts";
+import {
+  coerceClubData,
+  constrainClubData,
+  isClubProfile,
+  lockClubProfile,
+  parseClubGenre,
+  parseManualImportDepth,
+} from "./_shared/schema.ts";
+import type { ManualImportDepth } from "../../src/lib/types.ts";
 
 type ParseBody = {
   text?: unknown;
@@ -18,7 +26,24 @@ type ParseBody = {
   profile?: unknown;
   months?: unknown;
   genre?: unknown;
+  depth?: unknown;
 };
+
+// depth(간단형/기본형/체계형)에 따라 TO-DO를 얼마나 촘촘하게 만들지 지시하는 문장. 체계형은 기존 동작 그대로다.
+function depthTaskRule(depth: ManualImportDepth): string {
+  if (depth === "simple") {
+    return `
+- 이 조직은 "간단형"을 선택했다. 각 행사마다 tasks는 핵심 1~2개만 넣어라. 세부 체크리스트(checklist)나 action_details는 만들지 마라.
+- source "inferred"로 준비 항목을 보충하지 마라. 문서에 없으면 tasks를 비워 둬도 된다.`;
+  }
+  if (depth === "basic") {
+    return `
+- 이 조직은 "기본형"을 선택했다. 각 행사마다 tasks는 핵심 2~4개만 넣어라. checklist는 꼭 필요할 때만 2개 이하로 넣어라.
+- 문서에 준비 항목이 거의 없으면 장르 핵심만 1~2개 짧게 보충하고, 과도하게 늘리지 마라.`;
+  }
+  return `
+- 이 조직은 "체계형"을 선택했다. 준비 TO-DO와 D-day 역산, checklist를 최대한 촘촘하게 채워라.`;
+}
 
 const extractClubPlanTool: Anthropic.Tool = {
   name: "extract_club_plan",
@@ -145,7 +170,13 @@ function applyMonthFilter(data: ClubData, months: number[] | null): ClubData {
  * 박아 넣어 모델이 그 목록 밖의 역할/분류를 만들어내지 못하게 하고, months 유무에 따라
  * 특정 월만 추출할지 연간 전체를 추출할지 규칙을 다르게 지시한다.
  */
-function buildSystemPrompt(profile: ClubProfile, currentYear: number, months: number[] | null, genre: ClubGenre): string {
+function buildSystemPrompt(
+  profile: ClubProfile,
+  currentYear: number,
+  months: number[] | null,
+  genre: ClubGenre,
+  depth: ManualImportDepth,
+): string {
   const roleLines = profile.roles
     .map((role) => {
       const aliases = role.aliases.length > 0 ? ` (별칭: ${role.aliases.join(", ")})` : "";
@@ -219,7 +250,8 @@ ${categoryLines}
 - ClubTask.days_before_dday: 0 이상의 정수. 음수 금지
 - ClubTask.is_mandatory: 필수 업무면 true
 - ClubTask.source: extracted 또는 inferred
-- club_info.roles: 잠긴 ClubProfile.roles와 동일해야 한다`;
+- club_info.roles: 잠긴 ClubProfile.roles와 동일해야 한다
+${depthTaskRule(depth)}`;
 }
 
 /**
@@ -284,6 +316,7 @@ export default async (req: Request) => {
   const currentYear = new Date().getFullYear();
   const profile = lockClubProfile({ ...body.profile, academic_year: currentYear });
   const genre = parseClubGenre(body.genre);
+  const depth = parseManualImportDepth(body.depth);
   const monthHint = months ? `${months.join(", ")}월 행사만` : "연간 일정과 TO-DO를";
   const forModel = withManualText(resolved, sliceManualForMonths(resolved.text, months));
 
@@ -292,7 +325,7 @@ export default async (req: Request) => {
     const response = await client.messages.create({
       model: MODEL_ID,
       max_tokens: months && months.length === 1 ? 4096 : 8192,
-      system: buildSystemPrompt(profile, currentYear, months, genre),
+      system: buildSystemPrompt(profile, currentYear, months, genre, depth),
       tools: [extractClubPlanTool],
       tool_choice: { type: "tool", name: "extract_club_plan" },
       messages: [

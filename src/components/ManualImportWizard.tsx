@@ -55,7 +55,9 @@ import {
   filePayloadForApi,
   HWP_MESSAGE,
   MANUAL_ACCEPT,
+  MANUAL_TEXT_PLACEHOLDER,
   MANUAL_UPLOAD_GUIDE,
+  MANUAL_UPLOAD_INTRO,
   readManualFile,
   type ManualFilePayload,
 } from "../lib/manual-file";
@@ -63,12 +65,15 @@ import { hasMonthSections } from "../lib/manual-months";
 import { mergeClubEvents, mergeSeasonEvents } from "../lib/parse-events";
 import {
   CLUB_GENRES,
+  MANUAL_IMPORT_DEPTHS,
+  manualImportDepthLabel,
   type CategoryDefinition,
   type ClarifyingQuestion,
   type ClubData,
   type ClubEvent,
   type ClubGenre,
   type ClubProfile,
+  type ManualImportDepth,
   type OnboardingChatMessage,
   type OnboardingQuestionCategory,
   type QuestionOption,
@@ -623,6 +628,7 @@ type ManualImportWizardProps = {
  */
 export function ManualImportWizard({ existingData, onApply }: ManualImportWizardProps) {
   const [phase, setPhase] = useState<Phase>("input");
+  const [depth, setDepth] = useState<ManualImportDepth | null>(null);
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
   const [filePayload, setFilePayload] = useState<ManualFilePayload | null>(null);
@@ -668,6 +674,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
    */
   function reset() {
     setPhase("input");
+    setDepth(null);
     setText("");
     setFileName("");
     setFilePayload(null);
@@ -872,6 +879,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
       const result = await postJson<StartOk>("/.netlify/functions/start-onboarding", {
         text: manual,
         file,
+        depth,
       });
       if (result.text) setText(result.text);
       if (filePayload?.kind !== "pdf") setFilePayload(null);
@@ -949,6 +957,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
         categories_asked: categoriesAsked || questions.some((question) => question.category === "event_categories"),
         messages: nextMessages,
         turn: nextTurn,
+        depth,
       });
       const assistant = result.assistant_message;
       setMessages([...nextMessages, { role: "assistant", content: assistant }]);
@@ -989,6 +998,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
       profile,
       ...(months && months.length > 0 ? { months } : {}),
       genre,
+      depth,
     });
     return result.data.events;
   }
@@ -1272,9 +1282,50 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
   return (
     <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
       <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4">
-        {phase === "input" ? (
+        {phase === "input" && depth === null ? (
           <>
             <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
+            <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
+              <h2 className="font-display text-lg font-bold text-fg">어떤 식으로 추출해드릴까요?</h2>
+              <p className="mt-1 text-sm text-fg3">
+                나중에 언제든 바꿀 수 있어요. 매뉴얼이 있든 키워드 몇 줄뿐이든, 다음 단계에서 똑같이 입력할 수 있어요.
+              </p>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {MANUAL_IMPORT_DEPTHS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setDepth(option.id)}
+                    className="flex aspect-square cursor-pointer flex-col items-center rounded-2xl border border-sky-100 bg-sky-50 p-5 text-center transition-colors hover:border-accent"
+                  >
+                    <div className="flex flex-1 flex-col items-center justify-center">
+                      <p className="font-display text-[17px] font-bold text-fg">{option.title}</p>
+                      <div className="mt-2 flex min-h-[44px] w-full items-center justify-center">
+                        <p className="text-[13px] leading-relaxed whitespace-pre-line text-fg3">{option.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex min-h-[32px] w-full items-center justify-center border-t border-sky-100 pt-2">
+                      <p className="text-[11px] leading-snug text-fg3">{option.recommend}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : null}
+
+        {phase === "input" && depth !== null ? (
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
+              <button
+                type="button"
+                onClick={() => setDepth(null)}
+                className="cursor-pointer text-[12px] font-semibold text-accent"
+              >
+                {manualImportDepthLabel(depth)} · 변경
+              </button>
+            </div>
             {error ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
             ) : null}
@@ -1292,7 +1343,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
                 </div>
                 <div style={{ paddingLeft: "25px" }}>
                   <p className="text-[13px] leading-relaxed text-fg2">
-                    {MANUAL_UPLOAD_GUIDE} 부서·직책이 없으면 공통으로 진행할 수 있습니다.
+                    <span className="font-semibold text-fg">{MANUAL_UPLOAD_INTRO}</span> {MANUAL_UPLOAD_GUIDE} 부서·직책이 없으면 공통으로 진행할 수 있습니다.
                   </p>
                   <p className="mt-2 text-[13px] leading-relaxed text-fg2">
                     파일은 <span className="font-semibold text-fg">4MB 이하</span>만 올려 주세요. 사진이 들어 있으면 용량이
@@ -1344,7 +1395,7 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
                 onChange={(event) => setText(event.target.value)}
                 rows={10}
                 className="mb-3 w-full rounded-xl border border-border bg-card2 p-3 text-sm text-fg"
-                placeholder="TXT / MD 내용을 붙여넣거나 위에서 파일을 올리세요."
+                placeholder={MANUAL_TEXT_PLACEHOLDER}
               />
               <button
                 type="button"

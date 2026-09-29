@@ -24,6 +24,7 @@
  * 🎯 주요 관리 요소:
  * - TaskSource, ClubTask, isInferredTask: 할 일 데이터와 "AI 추측 여부" 판단 함수
  * - CLUB_GENRES, ClubGenre, isClubGenre, clubGenreLabel: 동아리 장르 목록과 관련 함수
+ * - MANUAL_IMPORT_DEPTHS, ManualImportDepth, isManualImportDepth, manualImportDepthLabel: AI 추출 결과물 깊이(간단형/기본형/체계형) 목록과 관련 함수
  * - ClubEvent, GiftOccasion, ClubData: 행사/선물/동아리 전체 데이터 구조
  * - BoardTask, UpcomingEvent: 보드(할 일 보드) 화면에서 쓰는 데이터 구조
  * - RoleDefinition, CategoryDefinition, ClubProfile: 역할/카테고리/동아리 프로필 구조
@@ -83,6 +84,38 @@ export function isClubGenre(value: unknown): value is ClubGenre {
  */
 export function clubGenreLabel(genre: ClubGenre): string {
   return CLUB_GENRES.find((item) => item.id === genre)?.label ?? "기타";
+}
+
+// AI 추출 시 결과물을 얼마나 꼼꼼하게 만들지 고르는 3단계(간단형/기본형/체계형)
+export const MANUAL_IMPORT_DEPTHS = [
+  {
+    id: "simple",
+    title: "간단형",
+    description: "꼭 필요한 일정만\n가볍게 정리해요",
+    recommend: "한 사람이 다 챙겨요",
+  },
+  {
+    id: "basic",
+    title: "기본형",
+    description: "일정과 할 일을 함께 챙겨요",
+    recommend: "몇 명이 같이 챙기고, \n담당은 따로 안 나눠요",
+  },
+  {
+    id: "full",
+    title: "체계형",
+    description: "역할 분담부터 D-day까지\n꼼꼼하게 세팅해요",
+    recommend: "부서별로 나눠서 맡아요",
+  },
+] as const;
+
+export type ManualImportDepth = (typeof MANUAL_IMPORT_DEPTHS)[number]["id"];
+
+export function isManualImportDepth(value: unknown): value is ManualImportDepth {
+  return typeof value === "string" && MANUAL_IMPORT_DEPTHS.some((item) => item.id === value);
+}
+
+export function manualImportDepthLabel(depth: ManualImportDepth): string {
+  return MANUAL_IMPORT_DEPTHS.find((item) => item.id === depth)?.title ?? "체계형";
 }
 
 export type ClubEvent = {
