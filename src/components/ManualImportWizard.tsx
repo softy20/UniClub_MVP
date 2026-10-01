@@ -28,7 +28,8 @@
  *   추출된 일정(firstEvents/secondEvents), 진행률 표시용 값들, 로딩/에러 상태 등
  * - 하위 컴포넌트/유틸: ./manual-import/ 폴더로 분리됨(FileDropzone, AddRow, ChipRenameInput,
  *   ParseProgressBar, ClarifyingBusyBanner, ExtractedPanels, constants, types, utils,
- *   useEventExtraction 훅 = 일정 추출/재시도/진행률)
+ *   useEventExtraction 훅 = 일정 추출/재시도/진행률, DepthSelectPhase/InputPhase/
+ *   ClarifyingPhase/LockedPhase = 단계별 화면)
  * - 의존성: ../lib/manual-file(파일 읽기/분류), ../lib/manual-months(월 구간 확인),
  *   ../lib/parse-events(일정 합치기), ../lib/kst(오늘 날짜), ../lib/types(여러 데이터 타입),
  *   ./ManualPreview, ./marks
@@ -46,23 +47,16 @@
  * @file ManualImportWizard.tsx
  * @module components/ManualImportWizard
  */
-import { Lightbulb } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import clubSample from "../data/club.json";
 import {
   classifyManualFile,
   filePayloadForApi,
   HWP_MESSAGE,
-  MANUAL_TEXT_PLACEHOLDER,
-  MANUAL_UPLOAD_GUIDE,
-  MANUAL_UPLOAD_INTRO,
   readManualFile,
   type ManualFilePayload,
 } from "../lib/manual-file";
 import {
-  CLUB_GENRES,
-  MANUAL_IMPORT_DEPTHS,
-  manualImportDepthLabel,
   type CategoryDefinition,
   type ClarifyingQuestion,
   type ClubData,
@@ -73,19 +67,11 @@ import {
   type QuestionOption,
   type RoleDefinition,
 } from "../lib/types";
-import { AddRow } from "./manual-import/AddRow";
-import { ChipRenameInput } from "./manual-import/ChipRenameInput";
-import { ClarifyingBusyBanner } from "./manual-import/ClarifyingBusyBanner";
 import {
-  CATEGORY_LABEL,
   FALLBACK_CATEGORY,
   FALLBACK_ROLE,
   MAX_TURNS,
-  PARSE_HALVES,
 } from "./manual-import/constants";
-import { ExtractedCategoriesPanel, ExtractedRolesPanel } from "./manual-import/ExtractedPanels";
-import { FileDropzone } from "./manual-import/FileDropzone";
-import { ParseProgressBar } from "./manual-import/ParseProgressBar";
 import type { AnswerOk, Phase, StartOk } from "./manual-import/types";
 import {
   composeAnswerFrom,
@@ -97,8 +83,11 @@ import {
   questionKey,
 } from "./manual-import/utils";
 import { useEventExtraction } from "./manual-import/useEventExtraction";
+import { ClarifyingPhase } from "./manual-import/ClarifyingPhase";
+import { DepthSelectPhase } from "./manual-import/DepthSelectPhase";
+import { InputPhase } from "./manual-import/InputPhase";
+import { LockedPhase } from "./manual-import/LockedPhase";
 import { ManualPreview } from "./ManualPreview";
-import { RoleChip, Tag } from "./marks";
 
 type ManualImportWizardProps = {
   existingData: ClubData | null;
@@ -506,6 +495,22 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
     ? (otherByQuestion[currentKey] ?? otherByQuestion[currentQuestion.question] ?? "")
     : (otherByQuestion.freeform ?? "");
 
+  /** "기타" 선택지의 직접 입력값을 현재 질문 키로 저장한다(ref도 같이 갱신해 전송 시 최신값을 읽는다). */
+  function changeOther(value: string) {
+    setOtherByQuestion((prev) => {
+      const next = { ...prev, [currentKey]: value };
+      otherByQuestionRef.current = next;
+      return next;
+    });
+  }
+
+  /** 질문이 없는 자유 입력 모드의 입력값을 저장한다(키는 항상 "freeform" 하나뿐). */
+  function changeFreeform(value: string) {
+    const next = { freeform: value };
+    otherByQuestionRef.current = next;
+    setOtherByQuestion(next);
+  }
+
   /**
    * 확인 질문의 선택지를 고른다.
    * 특이사항: "기타" 선택지가 아니고 마지막 질문이 아니면, 살짝(320ms) 지연 후 자동으로 다음
@@ -593,465 +598,101 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
           phase === "input" && depth === null ? "max-w-[740px]" : "max-w-[620px]"
         }`}
       >
-        {phase === "input" && depth === null ? (
-          <>
-            <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
-            <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
-              <h2 className="font-display text-lg font-bold text-fg">어떤 식으로 추출해드릴까요?</h2>
-              <p className="mt-1 text-sm text-fg3">
-                나중에 언제든 바꿀 수 있어요. 매뉴얼이 있든 키워드 몇 줄뿐이든, 다음 단계에서 똑같이 입력할 수 있어요.
-              </p>
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(3,minmax(0,190px))] sm:justify-evenly">
-                {MANUAL_IMPORT_DEPTHS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setDepth(option.id)}
-                    className="my-[30px] flex aspect-square cursor-pointer flex-col items-center rounded-2xl border border-sky-100 bg-sky-50 p-5 text-center transition-colors hover:border-accent"
-                  >
-                    <div className="flex flex-1 flex-col items-center justify-center">
-                      <p className="font-display text-[17px] font-bold text-fg">{option.title}</p>
-                      <div className="mt-2 flex min-h-[44px] w-full items-center justify-center">
-                        <p className="my-[10px] text-[13px] leading-relaxed whitespace-pre-line text-fg3">{option.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex min-h-[32px] w-full items-center justify-center border-t border-sky-100 pt-2">
-                      <p className="text-[11px] leading-snug text-fg3">{option.recommend}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </>
-        ) : null}
+        {phase === "input" && depth === null ? <DepthSelectPhase onSelect={setDepth} /> : null}
 
         {phase === "input" && depth !== null ? (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
-              <button
-                type="button"
-                onClick={() => setDepth(null)}
-                className="cursor-pointer text-[12px] font-semibold text-accent"
-              >
-                {manualImportDepthLabel(depth)} · 변경
-              </button>
-            </div>
-            {error ? (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-            ) : null}
-            <section className="rounded-2xl border border-border bg-card p-4">
-              <div
-                className="mb-3 rounded-2xl border px-4 py-3.5"
-                style={{
-                  background: "rgba(0,102,255,0.06)",
-                  borderColor: "rgba(0,102,255,0.18)",
-                }}
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <Lightbulb size={18} weight="fill" color="#F5C518" aria-hidden="true" />
-                  <p className="text-[13px] font-semibold text-accent">파일 업로드 가이드</p>
-                </div>
-                <div style={{ paddingLeft: "25px" }}>
-                  <p className="text-[13px] leading-relaxed text-fg2">
-                    <span className="font-semibold text-fg">{MANUAL_UPLOAD_INTRO}</span> {MANUAL_UPLOAD_GUIDE} 부서·직책이 없으면 공통으로 진행할 수 있습니다.
-                  </p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-fg2">
-                    파일은 <span className="font-semibold text-fg">4MB 이하</span>만 올려 주세요. 사진이 들어 있으면 용량이
-                    커지니, 글자만 남기면 매뉴얼이 훨씬 가벼워집니다.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {["DOCX", "PDF", "TXT", "MD"].map((ext) => (
-                      <span
-                        key={ext}
-                        className="rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide text-accent2"
-                        style={{ background: "rgba(255,255,255,0.8)" }}
-                      >
-                        {ext}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-
-                </div>
-
-              </div>
-              <div className="mb-3">
-                <FileDropzone onFileSelect={(file) => void onFile(file)} />
-                {fileName ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-card2 px-3 py-2">
-                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-[rgba(34,197,94,0.15)] text-[11px] font-bold text-[#16a34a]">
-                      ✓
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-fg">{fileName}</p>
-                      <p className="text-[12px] text-fg3">
-                        {filePayload
-                          ? "파일이 첨부되었습니다. 미리보기는 건너뛰고 추출 시 서버에서 읽습니다."
-                          : "텍스트가 입력칸에 채워졌습니다. 긴 워드 매뉴얼도 여기서 바로 추출합니다."}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-              {fileError ? (
-                <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {fileError === HWP_MESSAGE ? HWP_MESSAGE : fileError}
-                </p>
-              ) : null}
-              <label className="mb-2 block text-sm font-medium text-fg">매뉴얼 텍스트</label>
-              <textarea
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                rows={10}
-                className="mb-3 w-full rounded-xl border border-border bg-card2 p-3 text-sm text-fg"
-                placeholder={MANUAL_TEXT_PLACEHOLDER}
-              />
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void startOnboarding()}
-                className="font-display w-full cursor-pointer rounded-[10px] bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {loading ? "부서 초안 추출 중..." : "부서 초안 추출"}
-              </button>
-              <button
-                type="button"
-                onClick={openSamplePreview}
-                className="mt-2 w-full cursor-pointer rounded-[10px] border border-border bg-card py-2.5 text-sm font-semibold text-fg2"
-              >
-                샘플 데이터로 미리보기 에디터 열기
-              </button>
-            </section>
-          </>
+          <InputPhase
+            depth={depth}
+            text={text}
+            fileName={fileName}
+            filePayload={filePayload}
+            fileError={fileError}
+            error={error}
+            loading={loading}
+            onTextChange={setText}
+            onFile={(file) => void onFile(file)}
+            onChangeDepth={() => setDepth(null)}
+            onStart={() => void startOnboarding()}
+            onOpenSample={openSamplePreview}
+          />
         ) : null}
 
         {phase === "clarifying" ? (
-          <section className="flex min-h-[calc(100%-1rem)] flex-col justify-center py-8">
-            {loading ? <ClarifyingBusyBanner label={clarifyingBusyLabel} /> : null}
-            {error ? (
-              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-            ) : null}
-            <div className="mb-10">
-              <div className="mb-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-[0.08em] text-fg3 uppercase">
-                  {safeQuestionIndex + 1} / {questionCount} 단계 확인 중 · 턴 {turn}/{MAX_TURNS}
-                </span>
-                <span className="text-xs text-fg3">{Math.round(((safeQuestionIndex + 1) / questionCount) * 100)}% 완료</span>
-              </div>
-              <div className="flex gap-1.5">
-                {Array.from({ length: questionCount }, (_, index) => (
-                  <div
-                    key={index}
-                    className="h-1 flex-1 rounded-full transition-colors duration-300"
-                    style={{ background: index <= safeQuestionIndex ? "var(--accent)" : "var(--border)" }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div
-              key={currentKey}
-              className="fade-in rounded-[20px] border border-border bg-card px-5 pt-7 pb-6 md:px-10 md:pt-10 md:pb-9"
-              aria-busy={loading}
-            >
-              <p className="mb-3 text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
-                {currentQuestion ? CATEGORY_LABEL[currentQuestion.category] : "추가 확인"} · 확인 {safeQuestionIndex + 1}단계
-              </p>
-              <h2 className="font-display mb-2 text-[22px] leading-snug font-bold text-fg">
-                {currentQuestion?.question ?? "추가로 알려주실 내용이 있나요?"}
-              </h2>
-              <p className={`text-sm leading-relaxed text-fg3 ${showExtractedRoles || showExtractedCategories ? "mb-4" : "mb-7"}`}>
-                {currentQuestion
-                  ? showAliasHint
-                    ? "매뉴얼에서 감지된 부서 별칭이 있습니다. 통합 여부를 선택하세요."
-                    : showExtractedCategories
-                      ? "매뉴얼에서 뽑은 짧은 분류입니다. 이후 일정 추출은 이 목록만 사용합니다."
-                      : "매뉴얼에서 추출한 내용입니다. 선택지를 고르면 다음 질문으로 이동합니다."
-                  : "선택지가 없으면 내용을 입력한 뒤 확인을 눌러 주세요."}
-              </p>
-
-              {showExtractedRoles ? <ExtractedRolesPanel roles={draftRoles} /> : null}
-              {showExtractedCategories ? <ExtractedCategoriesPanel categories={draftCategories} /> : null}
-
-              {currentQuestion ? (
-                <div className="flex flex-col gap-2.5">
-                  {currentQuestion.options.map((option) => {
-                    const selected = selectedId === option.id;
-                    const customOpen = selected && isOtherOption(option);
-                    return (
-                      <div key={option.id}>
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => chooseOption(currentQuestion, option)}
-                          className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-[18px] py-3.5 text-left text-sm font-medium text-fg disabled:cursor-not-allowed disabled:opacity-60"
-                          style={{
-                            border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                            background: selected ? "rgba(0,102,255,0.06)" : "var(--bg)",
-                          }}
-                        >
-                          <span
-                            className="flex size-[18px] shrink-0 items-center justify-center rounded-full"
-                            style={{
-                              border: `2px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                              background: selected ? "var(--accent)" : "transparent",
-                            }}
-                          >
-                            {selected ? <span className="size-[7px] rounded-full bg-white" /> : null}
-                          </span>
-                          {isOtherOption(option) ? <span className="text-fg3">{option.label}</span> : option.label}
-                        </button>
-                        {customOpen ? (
-                          <div className="fade-in mt-2 flex gap-2">
-                            <textarea
-                              ref={otherInputRef}
-                              autoFocus
-                              disabled={loading}
-                              value={otherDraftValue}
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setOtherByQuestion((prev) => {
-                                  const next = { ...prev, [currentKey]: value };
-                                  otherByQuestionRef.current = next;
-                                  return next;
-                                });
-                              }}
-                              rows={3}
-                              className="w-full rounded-[10px] border-[1.5px] border-accent bg-bg p-3 text-sm text-fg outline-none disabled:opacity-60"
-                              placeholder="직접 입력해 주세요..."
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <textarea
-                  ref={otherInputRef}
-                  disabled={loading}
-                  value={otherDraftValue}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    const next = { freeform: value };
-                    otherByQuestionRef.current = next;
-                    setOtherByQuestion(next);
-                  }}
-                  rows={4}
-                  className="w-full rounded-[10px] border-[1.5px] border-border bg-bg p-3 text-sm text-fg disabled:opacity-60"
-                  placeholder="추가로 확정할 내용을 입력하세요."
-                />
-              )}
-
-              <div className="mt-6 flex items-center gap-3">
-                {safeQuestionIndex > 0 ? (
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))}
-                    className="cursor-pointer border-0 bg-transparent p-0 text-[13px] text-fg3 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    ← 이전 단계로
-                  </button>
-                ) : null}
-                <div className="flex-1" />
-                {showOther || !currentQuestion ? (
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => confirmCurrentQuestion()}
-                    className="font-display cursor-pointer rounded-[10px] bg-accent px-[18px] py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loading ? clarifyingBusyLabel : "확인"}
-                  </button>
-                ) : loading ? (
-                  <p className="text-[13px] font-semibold text-accent">{clarifyingBusyLabel}</p>
-                ) : null}
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={reset}
-              className="mt-4 self-start text-[13px] text-fg3 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              처음부터
-            </button>
-          </section>
+          <ClarifyingPhase
+            loading={loading}
+            error={error}
+            busyLabel={clarifyingBusyLabel}
+            turn={turn}
+            questionCount={questionCount}
+            questionIndex={safeQuestionIndex}
+            currentQuestion={currentQuestion}
+            currentKey={currentKey}
+            selectedId={selectedId}
+            showOther={showOther}
+            showExtractedRoles={showExtractedRoles}
+            showExtractedCategories={showExtractedCategories}
+            showAliasHint={showAliasHint}
+            draftRoles={draftRoles}
+            draftCategories={draftCategories}
+            otherDraftValue={otherDraftValue}
+            otherInputRef={otherInputRef}
+            onChooseOption={chooseOption}
+            onOtherChange={changeOther}
+            onFreeformChange={changeFreeform}
+            onPrev={() => setQuestionIndex((index) => Math.max(0, index - 1))}
+            onConfirm={confirmCurrentQuestion}
+            onReset={reset}
+          />
         ) : null}
 
         {phase === "locked" && profile ? (
-          <section className="flex flex-col py-8">
-            {error ? (
-              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-            ) : null}
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-[14px] bg-[rgba(0,102,255,0.1)] text-[22px]">
-                🔒
-              </div>
-              <h2 className="font-display mb-2 text-[22px] font-extrabold text-fg md:text-[26px]">부서와 행사 분류를 확인해 주세요</h2>
-              <p className="text-sm text-fg3">
-                {profile.club_name} · {profile.academic_year}년. 아래 목록으로 연간 행사를 분류합니다. 추가하거나 삭제한 뒤
-                다음으로 넘어가세요.
-              </p>
-            </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
-              <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">현재 팀 목록</p>
-              <div className="mb-0 flex flex-wrap items-center gap-2.5">
-                {profile.roles.map((role) =>
-                  editingRole === role.role_name ? (
-                    <ChipRenameInput
-                      key={role.role_name}
-                      value={editingRoleText}
-                      onChange={setEditingRoleText}
-                      onCommit={commitRoleRename}
-                      onCancel={() => {
-                        setEditingRole(null);
-                        setEditingRoleText("");
-                      }}
-                    />
-                  ) : (
-                    <RoleChip
-                      key={role.role_name}
-                      name={role.role_name}
-                      roster={roleRoster}
-                      onClick={
-                        loading
-                          ? undefined
-                          : () => {
-                            setEditingRole(role.role_name);
-                            setEditingRoleText(role.role_name);
-                          }
-                      }
-                      onRemove={loading ? undefined : () => removeRole(role.role_name)}
-                    />
-                  ),
-                )}
-              </div>
-              {profile.roles.length === 1 && profile.roles[0].role_name === "공통" ? (
-                <p className="mt-4 text-[12px] text-fg3">역할이 없어도 공통으로 일정을 만들 수 있습니다.</p>
-              ) : null}
-              <AddRow
-                value={newRoleName}
-                placeholder="새 부서 이름 입력 후 Enter..."
-                onChange={setNewRoleName}
-                onAdd={addRole}
-                disabled={loading}
-              />
-            </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
-              <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">행사 분류</p>
-              <div className="flex flex-wrap items-center gap-2.5">
-                {profile.categories.map((item) =>
-                  editingCategory === item.label ? (
-                    <ChipRenameInput
-                      key={item.label}
-                      value={editingCategoryText}
-                      onChange={setEditingCategoryText}
-                      onCommit={commitCategoryRename}
-                      onCancel={() => {
-                        setEditingCategory(null);
-                        setEditingCategoryText("");
-                      }}
-                    />
-                  ) : (
-                    <Tag
-                      key={item.label}
-                      cat={item.label}
-                      onClick={
-                        loading
-                          ? undefined
-                          : () => {
-                            setEditingCategory(item.label);
-                            setEditingCategoryText(item.label);
-                          }
-                      }
-                      onRemove={loading ? undefined : () => removeCategory(item.label)}
-                    />
-                  ),
-                )}
-              </div>
-              <AddRow
-                value={newCategoryName}
-                placeholder="새 분류 이름 입력 후 Enter..."
-                onChange={setNewCategoryName}
-                onAdd={addCategory}
-                disabled={loading}
-              />
-            </div>
-            <div className="mb-5 rounded-[20px] border border-border bg-card p-5 md:p-8">
-              <p className="mb-2 text-[11px] font-semibold tracking-[0.1em] text-fg3 uppercase">동아리 장르</p>
-              <p className="mb-4 text-[13px] leading-relaxed text-fg3">
-                매뉴얼에 준비 TO-DO가 비어 있으면, 고른 장르의 표준 운영으로 보충합니다. 미리보기에서 지울 수 있습니다.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {CLUB_GENRES.map((item) => {
-                  const selected = genre === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setGenre(item.id)}
-                      className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13px] font-semibold"
-                      style={{
-                        border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                        background: selected ? "rgba(0,102,255,0.08)" : "var(--bg)",
-                        color: selected ? "var(--accent)" : "var(--fg2)",
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            {firstEvents || secondEvents || failedHalves.length > 0 ? (
-              <p className="mb-3 text-[12px] text-fg3">
-                상반기 {firstEvents ? `완료 (${firstEvents.length}건)` : failedHalves.includes("first") ? "실패" : "대기"} · 하반기{" "}
-                {secondEvents ? `완료 (${secondEvents.length}건)` : failedHalves.includes("second") ? "실패" : "대기"}
-              </p>
-            ) : null}
-            {loading ? <ParseProgressBar value={parseFill} /> : null}
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={reset}
-                className="cursor-pointer rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-fg3"
-              >
-                처음부터
-              </button>
-              {failedHalves.length === 0 ? (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => void parseWithProfile()}
-                  className="font-display flex-1 cursor-pointer rounded-xl bg-accent py-3 text-[15px] font-bold text-white disabled:opacity-60"
-                >
-                  {loading
-                    ? parseStep
-                      ? `${parseStep} 추출 중`
-                      : "일정 추출 중"
-                    : "이 팀 구성으로 행사 추출하기 →"}
-                </button>
-              ) : (
-                failedHalves.map((half) => (
-                  <button
-                    key={half}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => void parseWithProfile([half])}
-                    className="font-display flex-1 cursor-pointer rounded-xl bg-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {loading && parseStep
-                      ? `${parseStep} 추출 중`
-                      : `${PARSE_HALVES[half].label} 다시 파싱`}
-                  </button>
-                ))
-              )}
-            </div>
-          </section>
+          <LockedPhase
+            profile={profile}
+            roleRoster={roleRoster}
+            loading={loading}
+            error={error}
+            genre={genre}
+            onGenreChange={setGenre}
+            editingRole={editingRole}
+            editingRoleText={editingRoleText}
+            newRoleName={newRoleName}
+            onEditingRoleTextChange={setEditingRoleText}
+            onStartRoleRename={(name) => {
+              setEditingRole(name);
+              setEditingRoleText(name);
+            }}
+            onCommitRoleRename={commitRoleRename}
+            onCancelRoleRename={() => {
+              setEditingRole(null);
+              setEditingRoleText("");
+            }}
+            onRemoveRole={removeRole}
+            onNewRoleNameChange={setNewRoleName}
+            onAddRole={addRole}
+            editingCategory={editingCategory}
+            editingCategoryText={editingCategoryText}
+            newCategoryName={newCategoryName}
+            onEditingCategoryTextChange={setEditingCategoryText}
+            onStartCategoryRename={(label) => {
+              setEditingCategory(label);
+              setEditingCategoryText(label);
+            }}
+            onCommitCategoryRename={commitCategoryRename}
+            onCancelCategoryRename={() => {
+              setEditingCategory(null);
+              setEditingCategoryText("");
+            }}
+            onRemoveCategory={removeCategory}
+            onNewCategoryNameChange={setNewCategoryName}
+            onAddCategory={addCategory}
+            firstEvents={firstEvents}
+            secondEvents={secondEvents}
+            failedHalves={failedHalves}
+            parseStep={parseStep}
+            parseFill={parseFill}
+            onParse={(halves) => void parseWithProfile(halves)}
+            onReset={reset}
+          />
         ) : null}
       </div>
     </div>
