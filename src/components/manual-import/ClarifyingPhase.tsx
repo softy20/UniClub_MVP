@@ -1,3 +1,31 @@
+/**
+ * 🧭 UniClub - ClarifyingPhase (확인 질문 단계 화면)
+ *
+ * 운영 매뉴얼 마법사에서 AI가 던진 확인 질문(부서, 별칭, 동아리명, 행사 분류)을 한 번에 하나씩 보여주고 답을 받는 화면입니다.
+ *
+ * 📌 주요 기능:
+ * - 몇 번째 질문인지, 현재 턴이 몇 번째인지 진행 막대로 보여줍니다.
+ * - 질문에 맞춰 추출된 부서/분류 패널을 함께 보여줍니다.
+ * - 선택지를 고르거나 "기타"를 골라 직접 입력할 수 있고, 질문이 없으면 자유 입력창을 보여줍니다.
+ * - "이전 단계로", "확인", "처음부터" 버튼을 제공합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <ClarifyingPhase loading={loading} error={error} currentQuestion={currentQuestion} ... onConfirm={confirm} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: ClarifyingPhase
+ * - 외부에서 전달받는 데이터(Props): 질문/선택 상태와 이를 바꾸는 콜백 모음(ClarifyingPhaseProps 참고)
+ * - 내부 State: 없음(모든 상태는 ManualImportWizard가 들고 있음)
+ * - 의존성: ./ClarifyingBusyBanner, ./ExtractedPanels, ./constants, ./utils
+ *
+ * 💡 팁 및 주의사항:
+ * - questionIndex는 이미 범위 보정된 값을 받습니다. 답변 조합/서버 전송은 부모의 onChooseOption/onConfirm이 처리합니다.
+ *
+ * @file ClarifyingPhase.tsx
+ * @module components/manual-import/ClarifyingPhase
+ */
 import type { RefObject } from "react";
 import type { CategoryDefinition, ClarifyingQuestion, QuestionOption, RoleDefinition } from "../../lib/types";
 import { ClarifyingBusyBanner } from "./ClarifyingBusyBanner";

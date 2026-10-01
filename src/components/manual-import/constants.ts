@@ -1,3 +1,29 @@
+/**
+ * 🧭 UniClub - constants (매뉴얼 가져오기 상수 모음)
+ *
+ * 운영 매뉴얼 마법사(ManualImportWizard)와 일정 추출 훅이 함께 쓰는 상수를 모아둔 파일입니다.
+ *
+ * 📌 주요 기능:
+ * - 확인 질문 최대 턴 수(MAX_TURNS)와 질문 종류별 한글 라벨(CATEGORY_LABEL)
+ * - 일정 추출 구간 설정: 계절 구간(PARSE_SEASONS), 상/하반기(PARSE_HALVES), 진행률 계산용 값
+ * - 시간 초과 에러 문구, 짧은 매뉴얼 기준 글자 수, 기본 부서/분류(FALLBACK_ROLE/CATEGORY)
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * import { MAX_TURNS, PARSE_SEASONS } from "./constants";
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 모든 값은 export된 const입니다.
+ * - 의존성: ../../lib/types, ./types
+ *
+ * 💡 팁 및 주의사항:
+ * - PARSE_CHUNK_TOTAL은 PARSE_SEASONS 길이에서 계산되므로, 계절 구간을 바꾸면 진행률 계산도 자동으로 따라갑니다.
+ * - PARSE_CHUNK_MS, PARSE_FINISH_MS는 진행률 애니메이션의 체감용 시간이며 실제 서버 응답 시간과는 무관합니다.
+ *
+ * @file constants.ts
+ * @module components/manual-import/constants
+ */
 import type { CategoryDefinition, OnboardingQuestionCategory, RoleDefinition } from "../../lib/types";
 import type { ParseHalf } from "./types";
 

@@ -1,3 +1,28 @@
+/**
+ * 🧭 UniClub - DepthSelectPhase (추출 깊이 선택 화면)
+ *
+ * 운영 매뉴얼 마법사의 첫 화면입니다. AI가 매뉴얼을 얼마나 깊게 분석할지(간단형/기본형/체계형)를 카드로 골라 줍니다.
+ *
+ * 📌 주요 기능:
+ * - MANUAL_IMPORT_DEPTHS 목록을 카드로 보여줍니다(제목, 설명, 추천 대상).
+ * - 카드를 누르면 onSelect로 선택한 깊이를 부모에 알립니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <DepthSelectPhase onSelect={setDepth} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: DepthSelectPhase
+ * - 외부에서 전달받는 데이터(Props): onSelect
+ * - 의존성: ../../lib/types(MANUAL_IMPORT_DEPTHS)
+ *
+ * 💡 팁 및 주의사항:
+ * - 선택한 깊이는 다음 단계의 서버 요청(depth)에 그대로 실려 갑니다. 나중에 입력 화면에서 바꿀 수 있습니다.
+ *
+ * @file DepthSelectPhase.tsx
+ * @module components/manual-import/DepthSelectPhase
+ */
 import { MANUAL_IMPORT_DEPTHS, type ManualImportDepth } from "../../lib/types";
 
 /**

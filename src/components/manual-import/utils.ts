@@ -1,3 +1,30 @@
+/**
+ * 🧭 UniClub - utils (매뉴얼 가져오기 순수 함수 모음)
+ *
+ * 운영 매뉴얼 마법사에서 쓰는, 화면(React)과 상관없는 함수들을 모아둔 파일입니다.
+ *
+ * 📌 주요 기능:
+ * - postJson: Netlify 함수에 JSON을 보내고 결과를 파싱합니다(시간 초과/에러 변환 포함).
+ * - 시간 초과 판별(isTimeoutBody, isTimeoutError), 대기 함수(waitMs, waitForPaint)
+ * - 질문 답변 조합(composeAnswerFrom, questionKey, isOtherOption, isDeptQuestion, isCategoryQuestion)
+ * - 추출 진행/데이터 변환(settledChunkCount, formatParseStep, clubDataFromProfile, extraAliases, extraCategoryAliases)
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * import { postJson, composeAnswerFrom } from "./utils";
+ * const result = await postJson<AnswerOk>("/.netlify/functions/answer-onboarding", body);
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 모두 export된 함수입니다.
+ * - 의존성: ../../lib/types, ./constants, ./types
+ *
+ * 💡 팁 및 주의사항:
+ * - postJson은 이 마법사의 모든 서버 통신이 거치는 입구입니다. 에러 처리를 바꿀 때는 시간 초과 흐름을 함께 확인하세요.
+ *
+ * @file utils.ts
+ * @module components/manual-import/utils
+ */
 import type {
   CategoryDefinition,
   ClarifyingQuestion,
@@ -28,6 +55,9 @@ export function isTimeoutError(error: unknown): boolean {
   return message === PARSE_TIMEOUT_MESSAGE || isTimeoutBody(message);
 }
 
+/**
+ * 지정한 시간(ms)만큼 기다린다. 진행률 애니메이션 끝을 화면에 보여주려고 잠깐 멈출 때 쓴다.
+ */
 export function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -103,10 +133,16 @@ export function extraCategoryAliases(category: CategoryDefinition): string[] {
     .filter((alias) => alias.length > 0 && alias !== category.label);
 }
 
+/**
+ * 부서(roles)나 별칭(aliases) 확인 질문인지 판단한다. true면 추출된 부서 패널을 함께 보여준다.
+ */
 export function isDeptQuestion(question: ClarifyingQuestion | undefined): boolean {
   return question?.category === "roles" || question?.category === "aliases";
 }
 
+/**
+ * 행사 분류(event_categories) 확인 질문인지 판단한다. true면 추출된 분류 패널을 함께 보여준다.
+ */
 export function isCategoryQuestion(question: ClarifyingQuestion | undefined): boolean {
   return question?.category === "event_categories";
 }
