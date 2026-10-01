@@ -1,3 +1,36 @@
+/**
+ * 🧭 UniClub - useEventExtraction (일정 추출 훅)
+ *
+ * 확정된 부서표를 기준으로 실제 행사 일정을 서버에서 뽑아내는 과정을 한곳에 모은 React 훅입니다.
+ * 운영 매뉴얼 마법사의 본체가 "추출해 줘"만 호출하면 되도록 복잡한 부분을 맡습니다.
+ *
+ * 📌 주요 기능:
+ * - 서버(parse-manual-with-profile)에 일정 추출을 요청합니다.
+ * - 시간 초과가 나면 월 구간을 반으로 쪼개 다시 시도합니다.
+ * - 상반기/하반기를 따로 요청하고, 한쪽이 실패해도 다른 쪽은 계속 진행합니다.
+ * - 짧은 매뉴얼은 반기로 나누지 않고 한 번에 추출합니다.
+ * - 진행률(parseFill)을 계산하고, 끝나면 기존 시즌 데이터와 병합해 onComplete로 알립니다.
+ *
+ * 🔗 사용 예시:
+ * ```ts
+ * const { parseWithProfile, failedHalves, parseFill } = useEventExtraction({ text, profile, ..., onComplete });
+ * void parseWithProfile();        // 아직 안 된 반기를 추출
+ * void parseWithProfile(["first"]); // 실패한 상반기만 다시
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - 반환값: firstEvents, secondEvents, failedHalves, parseStep, parseFill, parseWithProfile, clearEvents, resetExtraction
+ * - 내부 State: 반기별 결과, 실패한 반기, 현재 단계 라벨, 완료 구간 수, 진행률
+ * - 의존성: ../../lib/manual-file, ../../lib/manual-months, ../../lib/parse-events, ./constants, ./utils
+ *
+ * 💡 팁 및 주의사항:
+ * - loading/error는 다른 흐름(질문 답변 전송 등)과 공유하는 상태라 호출 쪽에서 setLoading/setError를 넘겨줍니다.
+ * - 부서/분류가 바뀌면 이전 추출 결과는 무효이므로 clearEvents를 호출해야 합니다.
+ * - 진행률 막대는 실제 진행에 애니메이션을 섞은 값이라 정확한 퍼센트가 아닙니다.
+ *
+ * @file useEventExtraction.ts
+ * @module components/manual-import/useEventExtraction
+ */
 import { useEffect, useRef, useState } from "react";
 import { filePayloadForApi, type ManualFilePayload } from "../../lib/manual-file";
 import { hasMonthSections } from "../../lib/manual-months";
