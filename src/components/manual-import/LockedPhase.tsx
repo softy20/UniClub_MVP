@@ -1,3 +1,32 @@
+/**
+ * 🧭 UniClub - LockedPhase (부서/분류 확정 단계 화면)
+ *
+ * 확인 질문이 끝나 부서표가 확정된 뒤, 부서/행사 분류/동아리 장르를 마지막으로 확인·수정하고 일정 추출을 시작하는 화면입니다.
+ *
+ * 📌 주요 기능:
+ * - 부서와 행사 분류를 칩으로 보여주고, 클릭해서 이름 변경, 삭제, 새로 추가할 수 있습니다.
+ * - 동아리 장르를 고릅니다(준비 TO-DO 보충에 쓰임).
+ * - 상반기/하반기 추출 상태와 진행률 막대를 보여줍니다.
+ * - 일정 추출 버튼을 보여주고, 실패한 반기가 있으면 반기별 "다시 파싱" 버튼으로 바꿉니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <LockedPhase profile={profile} loading={loading} ... onParse={parseWithProfile} onReset={reset} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: LockedPhase
+ * - 외부에서 전달받는 데이터(Props): 부서표(profile), 편집 상태와 콜백, 추출 진행 상태(LockedPhaseProps 참고)
+ * - 내부 State: 없음
+ * - 의존성: ./AddRow, ./ChipRenameInput, ./ParseProgressBar, ../marks
+ *
+ * 💡 팁 및 주의사항:
+ * - 편집 상태는 ManualImportWizard가, 추출 진행 상태는 useEventExtraction 훅이 들고 있고 이 컴포넌트는 값과 콜백만 받습니다.
+ * - loading 중에는 칩 클릭/삭제와 추가가 막힙니다.
+ *
+ * @file LockedPhase.tsx
+ * @module components/manual-import/LockedPhase
+ */
 import { CLUB_GENRES, type ClubEvent, type ClubGenre, type ClubProfile } from "../../lib/types";
 import { RoleChip, Tag } from "../marks";
 import { AddRow } from "./AddRow";

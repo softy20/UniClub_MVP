@@ -1,3 +1,29 @@
+/**
+ * 🧭 UniClub - ExtractedPanels (추출 결과 보여주기)
+ *
+ * 확인 질문 화면에서 "AI가 매뉴얼에서 이런 부서/분류를 뽑았어요"를 보여주는 읽기 전용 패널 두 개를 모아둔 파일입니다.
+ *
+ * 📌 주요 기능:
+ * - ExtractedRolesPanel: 부서 목록과 별칭을 "별칭 → 정식 이름 + 별칭 감지됨" 형태로 보여줍니다.
+ * - ExtractedCategoriesPanel: 행사 분류와 각 분류의 별칭을 태그로 보여줍니다.
+ * - 목록이 비어 있으면 아무것도 그리지 않습니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <ExtractedRolesPanel roles={draftRoles} />
+ * <ExtractedCategoriesPanel categories={draftCategories} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: ExtractedRolesPanel, ExtractedCategoriesPanel
+ * - 의존성: ../marks(RoleChip, Tag), ./utils(extraAliases, extraCategoryAliases)
+ *
+ * 💡 팁 및 주의사항:
+ * - 정식 이름과 같거나 공백뿐인 별칭은 "진짜 별칭"이 아니므로 걸러서 보여줍니다.
+ *
+ * @file ExtractedPanels.tsx
+ * @module components/manual-import/ExtractedPanels
+ */
 import type { CategoryDefinition, RoleDefinition } from "../../lib/types";
 import { RoleChip, Tag } from "../marks";
 import { extraAliases, extraCategoryAliases } from "./utils";

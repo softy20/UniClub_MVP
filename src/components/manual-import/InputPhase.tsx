@@ -1,3 +1,30 @@
+/**
+ * 🧭 UniClub - InputPhase (매뉴얼 입력 단계 화면)
+ *
+ * 운영 매뉴얼 마법사에서 매뉴얼 파일을 올리거나 텍스트를 붙여 넣고 "부서 초안 추출"을 누르는 화면입니다.
+ *
+ * 📌 주요 기능:
+ * - 선택한 추출 깊이를 보여주고 "변경"으로 깊이 선택 화면으로 돌아갈 수 있습니다.
+ * - 파일 업로드 가이드와 FileDropzone, 첨부된 파일 이름/상태를 보여줍니다.
+ * - 매뉴얼 텍스트 입력칸과 "부서 초안 추출", "샘플 데이터로 미리보기" 버튼을 제공합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <InputPhase depth={depth} text={text} ... onStart={startOnboarding} onOpenSample={openSample} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: InputPhase
+ * - 외부에서 전달받는 데이터(Props): 입력값/파일 상태와 콜백 모음(InputPhaseProps 참고)
+ * - 내부 State: 없음
+ * - 의존성: ../../lib/manual-file, ./FileDropzone
+ *
+ * 💡 팁 및 주의사항:
+ * - HWP 파일은 지원하지 않아 HWP_MESSAGE 안내 문구가 그대로 에러로 표시됩니다.
+ *
+ * @file InputPhase.tsx
+ * @module components/manual-import/InputPhase
+ */
 import { Lightbulb } from "@phosphor-icons/react";
 import {
   HWP_MESSAGE,

@@ -1,3 +1,31 @@
+/**
+ * 🧭 UniClub - FileDropzone (파일 끌어다 놓기 영역)
+ *
+ * 운영 매뉴얼 파일을 드래그해서 놓거나, 클릭해서 탐색기로 고를 수 있는 업로드 영역입니다.
+ *
+ * 📌 주요 기능:
+ * - 파일을 끌어 올리면 테두리와 배경색이 바뀌어 놓을 수 있음을 알려줍니다.
+ * - 영역 클릭 또는 Enter/Space 키로 파일 선택창을 엽니다.
+ * - 지원 확장자(.md, .docx, .pdf, .txt)를 안내합니다.
+ *
+ * 🔗 사용 예시:
+ * ```tsx
+ * <FileDropzone onFileSelect={(file) => handleFile(file)} />
+ * ```
+ *
+ * 🎯 주요 관리 요소:
+ * - export되는 컴포넌트: FileDropzone
+ * - 외부에서 전달받는 데이터(Props): onFileSelect(고른 파일을 받는 콜백)
+ * - 내부 State: isDragging(드래그 중인지)
+ * - 의존성: ../../lib/manual-file(MANUAL_ACCEPT)
+ *
+ * 💡 팁 및 주의사항:
+ * - 실제 파일 읽기/검증은 onFileSelect를 받는 부모가 합니다.
+ * - 같은 파일을 다시 고를 수 있도록, 선택할 때마다 input의 value를 비웁니다.
+ *
+ * @file FileDropzone.tsx
+ * @module components/manual-import/FileDropzone
+ */
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { MANUAL_ACCEPT } from "../../lib/manual-file";
 
