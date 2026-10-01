@@ -16,6 +16,7 @@ import {
   normalizeCategory,
   normalizeQuestions,
   normalizeRole,
+  parseManualImportDepth,
   withCategoriesQuestion,
   withClubNameQuestion,
   withEmptyRolesQuestion,
@@ -24,6 +25,7 @@ import {
 type StartBody = {
   text?: unknown;
   file?: unknown;
+  depth?: unknown;
 };
 
 /**
@@ -55,13 +57,14 @@ export default async (req: Request) => {
   }
 
   const currentYear = currentAcademicYear();
+  const depth = parseManualImportDepth(body.depth);
 
   try {
     const client = createAnthropic();
     const response = await client.messages.create({
       model: MODEL_ID,
       max_tokens: 2048,
-      system: buildStartSystem(currentYear),
+      system: buildStartSystem(currentYear, depth),
       tools: [proposeClubRolesTool],
       tool_choice: { type: "tool", name: "propose_club_roles" },
       messages: [

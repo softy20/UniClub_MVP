@@ -33,6 +33,9 @@
  * - 날짜가 없는(모호한) 행사는 달력에 표시되지 않고 제외됩니다.
  * - 카테고리 목록이 바뀌면(예: 새로운 분류가 생기면) 선택 상태가 자동으로 초기화됩니다(전체 선택).
  * - 달력 칸 하나에 행사가 4개 이상이면 3개만 보여주고 "+N"으로 나머지 개수를 표시합니다.
+ * - 데스크톱(비압축) 칸에는 그날 마감인 미완료 할 일마다 카테고리 색의 얇은 막대(3px, 반투명)를
+ *   쌓아 보여주고, 막대에 마우스를 올리면 할 일 이름이 툴팁으로 뜹니다. 아래에 "+N 마감"으로 개수도 적습니다.
+ * - 모바일(압축) 칸은 점 대신, 카테고리 색 배경에 행사명을 넣은 작은 박스로 최대 2개까지 보여줍니다.
  *
  * @file MakeCalendar.tsx
  * @module components/MakeCalendar
@@ -43,6 +46,14 @@ import { monthCells } from "../lib/calendar";
 import type { KstClock } from "../lib/kst";
 import { EventDateButton, isoDateParts } from "./EventEditors";
 import { CategoryFilter, DdayBadge } from "./marks";
+
+// 달력 칸에 표시할 할 일 한 건 (마감일이 있는 부서 태스크)
+type CalendarTodo = {
+  text: string;
+  role: string;
+  done: boolean;
+  event: OpsEvent;
+};
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -157,6 +168,31 @@ export function MakeCalendar({
   );
   const selectedDayEvents = selectedDay ? filtered.filter((event) => event.date.getDate() === selectedDay) : [];
 
+  // 이번 달에 마감인 할 일을 날짜별로 묶는다 (데스크톱 달력 칸에 아이콘으로 표시).
+  // 마감일 = 행사일 - daysBefore. 카테고리 필터는 할 일의 소속 행사 기준으로 같이 적용한다.
+  const todosByDay = useMemo(() => {
+    const map = new Map<number, CalendarTodo[]>();
+    if (compact) return map;
+    for (const event of dated) {
+      if (!active.has(event.category)) continue;
+      for (const item of event.checklist) {
+        const due = new Date(
+          event.date.getFullYear(),
+          event.date.getMonth(),
+          event.date.getDate() - item.daysBefore,
+        );
+        if (due.getFullYear() !== viewYear || due.getMonth() + 1 !== viewMonth) continue;
+        const day = due.getDate();
+        const list = map.get(day) ?? [];
+        list.push({ text: item.text, role: item.role, done: item.done, event });
+        map.set(day, list);
+      }
+    }
+    for (const list of map.values()) list.sort((a, b) => Number(a.done) - Number(b.done));
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dated, active, viewYear, viewMonth, compact]);
+
   return (
     <div className={`fade-in flex flex-col bg-bg ${compact ? "h-full overflow-hidden" : ""}`}>
       <div className={`flex items-center bg-bg ${compact ? "justify-center gap-4 px-4 py-2.5" : "justify-between px-6 py-4"}`}>
@@ -248,6 +284,7 @@ export function MakeCalendar({
               const dow = index % 7;
               const row = Math.floor(index / 7);
               const dayEvents = day ? filtered.filter((event) => event.date.getDate() === day) : [];
+              const dayTodos = day ? (todosByDay.get(day) ?? []) : [];
               const isToday = day === clock.day && viewMonth === clock.month && viewYear === clock.year;
               const isSelected = compact && day === selectedDay;
               return (
@@ -301,19 +338,21 @@ export function MakeCalendar({
                         {day}
                       </div>
                       {compact ? (
-                        <div className="mt-1 flex max-w-full flex-wrap justify-center gap-0.5">
-                          {dayEvents.slice(0, 4).map((event) => {
+                        <div className="mt-1 flex w-full flex-col gap-0.5">
+                          {dayEvents.slice(0, 2).map((event) => {
                             const cat = categoryStyle(event.category);
                             return (
                               <span
                                 key={event.id}
-                                className="size-1.5 shrink-0 rounded-full"
-                                style={{ background: cat.color }}
-                              />
+                                className="block w-full truncate rounded-[3px] px-1 text-[8px] leading-[13px] font-medium"
+                                style={{ background: cat.bg, color: cat.color }}
+                              >
+                                {event.title}
+                              </span>
                             );
                           })}
-                          {dayEvents.length > 4 ? (
-                            <span className="text-[8px] leading-none text-fg3">+{dayEvents.length - 4}</span>
+                          {dayEvents.length > 2 ? (
+                            <span className="text-[8px] leading-none text-fg3">+{dayEvents.length - 2}</span>
                           ) : null}
                         </div>
                       ) : (
@@ -337,6 +376,30 @@ export function MakeCalendar({
                           {dayEvents.length > 3 ? (
                             <p className="pl-1 text-[10px] text-fg3">+{dayEvents.length - 3}</p>
                           ) : null}
+                          {(() => {
+                            const pending = dayTodos.filter((todo) => !todo.done);
+                            if (pending.length === 0) return null;
+                            return (
+                              <div className="mt-0.5 flex flex-col gap-[1px] px-1.5">
+                                {pending.map((todo, todoIndex) => (
+                                  <div
+                                    key={`${todo.event.id}-bar-${todoIndex}`}
+                                    title={todo.text}
+                                    style={{
+                                      height: "3px",
+                                      borderRadius: "2px",
+                                      background: categoryStyle(todo.event.category).color,
+                                      opacity: 0.55,
+                                      width: "100%",
+                                    }}
+                                  />
+                                ))}
+                                <span className="mt-[1px] text-[10px] font-medium text-fg3">
+                                  +{pending.length} 마감
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </>

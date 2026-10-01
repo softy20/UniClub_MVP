@@ -20,7 +20,7 @@
  * ```
  *
  * 🎯 주요 관리 요소:
- * - HWP_MESSAGE, MANUAL_UPLOAD_GUIDE, MANUAL_SIZE_GUIDE, MANUAL_ACCEPT, MAX_MANUAL_FILE_BYTES: 안내 문구/제한 상수
+ * - HWP_MESSAGE, MANUAL_UPLOAD_INTRO, MANUAL_UPLOAD_GUIDE, MANUAL_SIZE_GUIDE, MANUAL_TEXT_PLACEHOLDER, MANUAL_ACCEPT, MAX_MANUAL_FILE_BYTES: 안내 문구/제한 상수
  * - ManualFileKind, ManualFilePayload: 파일 종류와 파일 데이터의 타입
  * - classifyManualFile(file): 파일 확장자를 보고 종류를 구분하는 함수
  * - readManualFile(file): 파일을 실제로 읽어서 payload와 미리보기 텍스트를 만드는 함수 (비동기)
@@ -37,10 +37,14 @@
  */
 
 export const HWP_MESSAGE = "한글(.hwp) 파일은 워드(.docx)로 변환하여 업로드해 주세요";
+export const MANUAL_UPLOAD_INTRO =
+  "키워드 몇 줄이나 간단한 연간계획서만 있어도 괜찮아요.";
 export const MANUAL_UPLOAD_GUIDE =
   "동아리 조직 구성, 연간 행사 일정, 사전 준비 기간, 담당 부서가 명시되어 있으면 AI 정확도가 높아집니다.";
 export const MANUAL_SIZE_GUIDE =
   "파일은 4MB 이하만 올려 주세요. 사진이 들어 있으면 용량이 커지니, 글자만 남기면 매뉴얼이 훨씬 가벼워집니다.";
+export const MANUAL_TEXT_PLACEHOLDER =
+  "예: 코딩 동아리, 임원진(프론트엔드, 백엔드), 신입생 OT, 해커톤, 뒤풀이\n문서 내용을 붙여넣거나 위에서 파일을 올려도 돼요.";
 export const MANUAL_ACCEPT = ".docx,.pdf,.txt,.md,.markdown,.hwp,.hwpx";
 export const MAX_MANUAL_FILE_BYTES = 4 * 1024 * 1024;
 const DOCX_FAIL_MESSAGE =

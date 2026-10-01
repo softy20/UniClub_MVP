@@ -1,6 +1,21 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { CategoryDefinition, ClarifyingQuestion, RoleDefinition } from "../../../src/lib/types.ts";
+import type { CategoryDefinition, ClarifyingQuestion, ManualImportDepth, RoleDefinition } from "../../../src/lib/types.ts";
 import { isCategoryDefinition, isOnboardingQuestion, isRecord, isRoleDefinition } from "./schema.ts";
+
+// depth(간단형/기본형/체계형)에 따라 온보딩 질문에 덧붙일 지시문. 체계형은 기존 동작과 동일하게 추가 지시가 없다.
+function depthOnboardingNote(depth: ManualImportDepth): string {
+  if (depth === "simple") {
+    return `
+
+이 조직은 "간단형"을 선택했다. 부서·직책이 여러 개여도 묻지 말고 draft_roles는 "공통" 하나만 제안하고, roles 범주 질문은 하지 마라. 행사 분류도 세분화해 묻지 말고 draft_categories를 최대 2~3개로 짧게 제안하고 바로 확정 질문 하나만 하라. 전체 질문은 가능하면 1개로 끝내라.`;
+  }
+  if (depth === "basic") {
+    return `
+
+이 조직은 "기본형"을 선택했다. 부서가 명확히 여러 개로 나뉘어 있을 때만 roles 질문을 하고, 애매하면 "공통"으로 묶어 제안하라. 질문은 꼭 필요한 것만 최소로 하라.`;
+  }
+  return "";
+}
 
 const ROLE_ITEM_SCHEMA = {
   type: "object",
@@ -53,7 +68,7 @@ const QUESTION_ITEM_SCHEMA = {
  * 초안과 행사 분류 초안을 추출하고 확인 질문 1~2개를 propose_club_roles 도구로만
  * 제출하도록 모델에 지시한다.
  */
-export function buildStartSystem(currentYear: number): string {
+export function buildStartSystem(currentYear: number, depth: ManualImportDepth = "full"): string {
   return `너는 동아리 인수인계 매뉴얼에서 부서/직책 초안과 행사 분류 초안을 추출하는 온보딩 도우미다.
 
 현재 학년도는 ${currentYear}년이다.
@@ -80,7 +95,7 @@ academic_year는 반드시 ${currentYear}로 설정하라. 문서에 과거 연�
 - 각 질문은 클릭용 options를 반드시 포함한다. 예: "네, 이대로 확정", "부서 명칭 통합", "기타(직접 입력)".
 - 마지막 선택지는 반드시 id "other", label "기타(직접 입력)", is_other true 이다.
 - 주관식만 묻지 마라. 선택지 버튼으로 답할 수 있게 하라.
-- 반드시 propose_club_roles 도구만 호출하라.`;
+- 반드시 propose_club_roles 도구만 호출하라.${depthOnboardingNote(depth)}`;
 }
 
 /**
@@ -88,7 +103,7 @@ academic_year는 반드시 ${currentYear}로 설정하라. 문서에 과거 연�
  * 분류를 짧게 확정하도록, ask_clarifying_questions 또는 lock_club_profile 중 하나를
  * 호출하도록 모델에 지시한다.
  */
-export function buildAnswerSystem(currentYear: number): string {
+export function buildAnswerSystem(currentYear: number, depth: ManualImportDepth = "full"): string {
   return `너는 동아리 부서표와 행사 분류를 짧게 확정하는 온보딩 도우미다.
 
 현재 학년도는 ${currentYear}년이다. lock 시 academic_year는 반드시 ${currentYear}이다.
@@ -112,7 +127,7 @@ export function buildAnswerSystem(currentYear: number): string {
 - 모호할 때만 ask_clarifying_questions로 1~2개 더 묻는다.
 - 같은 범주를 반복하지 말고, 전체 대화는 최대 4턴이다.
 - 추가 질문에도 options 버튼을 넣고, 마지막은 기타(직접 입력)이다.
-- lock 시 locked는 반드시 true. categories와 default_category("기타")를 반드시 넣어라.`;
+- lock 시 locked는 반드시 true. categories와 default_category("기타")를 반드시 넣어라.${depthOnboardingNote(depth)}`;
 }
 
 export const proposeClubRolesTool: Anthropic.Tool = {

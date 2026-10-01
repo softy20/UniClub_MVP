@@ -29,6 +29,7 @@ import {
   normalizeCategory,
   normalizeQuestions,
   normalizeRole,
+  parseManualImportDepth,
   withCategoriesQuestion,
 } from "./_shared/schema.ts";
 
@@ -42,6 +43,7 @@ type AnswerBody = {
   categories_asked?: unknown;
   messages?: unknown;
   turn?: unknown;
+  depth?: unknown;
 };
 
 /**
@@ -92,6 +94,7 @@ export default async (req: Request) => {
   const categoriesAsked = body.categories_asked === true;
   const messages = Array.isArray(body.messages) ? body.messages.filter(isChatMessage) : [];
   const turn = typeof body.turn === "number" && body.turn > 0 ? Math.floor(body.turn) : 1;
+  const depth = parseManualImportDepth(body.depth);
 
   if (messages.length === 0) return errorResponse("Missing messages", 400);
 
@@ -127,7 +130,7 @@ export default async (req: Request) => {
     const response = await client.messages.create({
       model: MODEL_ID,
       max_tokens: 2048,
-      system: buildAnswerSystem(currentYear),
+      system: buildAnswerSystem(currentYear, depth),
       tools: [askClarifyingTool, lockClubProfileTool],
       tool_choice: forceLock
         ? { type: "tool", name: "lock_club_profile" }

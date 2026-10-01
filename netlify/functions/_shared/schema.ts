@@ -1,5 +1,6 @@
 import {
   isClubGenre,
+  isManualImportDepth,
   type CategoryDefinition,
   type ClarifyingQuestion,
   type ClubData,
@@ -7,6 +8,7 @@ import {
   type ClubGenre,
   type ClubProfile,
   type ClubTask,
+  type ManualImportDepth,
   type OnboardingQuestion,
   type OnboardingQuestionCategory,
   type QuestionOption,
@@ -542,6 +544,11 @@ export function resolveEventCategory(raw: string, profile: ClubProfile): string 
 
 export function parseClubGenre(value: unknown): ClubGenre {
   return isClubGenre(value) ? value : "other";
+}
+
+// 요청에 담긴 depth(간단형/기본형/체계형)를 검사하고, 없거나 잘못되면 기존 기본값(체계형)으로 되돌린다.
+export function parseManualImportDepth(value: unknown): ManualImportDepth {
+  return isManualImportDepth(value) ? value : "full";
 }
 
 /**
