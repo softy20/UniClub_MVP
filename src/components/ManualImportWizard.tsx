@@ -1281,7 +1281,11 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
 
   return (
     <div className="fade-in h-full overflow-y-auto p-4 md:p-6">
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-4">
+      <div
+        className={`mx-auto flex w-full flex-col gap-4 ${
+          phase === "input" && depth === null ? "max-w-[740px]" : "max-w-[620px]"
+        }`}
+      >
         {phase === "input" && depth === null ? (
           <>
             <p className="text-[12px] tracking-widest text-fg3 uppercase">문서 파싱 · 부서표 온보딩</p>
@@ -1290,18 +1294,18 @@ export function ManualImportWizard({ existingData, onApply }: ManualImportWizard
               <p className="mt-1 text-sm text-fg3">
                 나중에 언제든 바꿀 수 있어요. 매뉴얼이 있든 키워드 몇 줄뿐이든, 다음 단계에서 똑같이 입력할 수 있어요.
               </p>
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(3,minmax(0,190px))] sm:justify-evenly">
                 {MANUAL_IMPORT_DEPTHS.map((option) => (
                   <button
                     key={option.id}
                     type="button"
                     onClick={() => setDepth(option.id)}
-                    className="flex aspect-square cursor-pointer flex-col items-center rounded-2xl border border-sky-100 bg-sky-50 p-5 text-center transition-colors hover:border-accent"
+                    className="my-[30px] flex aspect-square cursor-pointer flex-col items-center rounded-2xl border border-sky-100 bg-sky-50 p-5 text-center transition-colors hover:border-accent"
                   >
                     <div className="flex flex-1 flex-col items-center justify-center">
                       <p className="font-display text-[17px] font-bold text-fg">{option.title}</p>
                       <div className="mt-2 flex min-h-[44px] w-full items-center justify-center">
-                        <p className="text-[13px] leading-relaxed whitespace-pre-line text-fg3">{option.description}</p>
+                        <p className="my-[10px] text-[13px] leading-relaxed whitespace-pre-line text-fg3">{option.description}</p>
                       </div>
                     </div>
                     <div className="flex min-h-[32px] w-full items-center justify-center border-t border-sky-100 pt-2">
