@@ -26,9 +26,8 @@
  * - 컴포넌트 안에서 바뀌는 데이터(State): 현재 단계(phase), 입력한 텍스트/파일,
  *   동아리 이름과 연도, 부서/행사 분류 초안, 질문 목록과 답변, 확정된 부서표(profile),
  *   추출된 일정(firstEvents/secondEvents), 진행률 표시용 값들, 로딩/에러 상태 등
- * - 내부 전용 하위 컴포넌트: FileDropzone(파일 끌어다 놓기), AddRow(부서/분류 추가 입력줄),
- *   ChipRenameInput(이름 바꾸기 입력창), ParseProgressBar(진행률 막대),
- *   ClarifyingBusyBanner(답변 처리 중 안내), ExtractedRolesPanel/ExtractedCategoriesPanel(추출 결과 보여주기)
+ * - 하위 컴포넌트/유틸: ./manual-import/ 폴더로 분리됨(FileDropzone, AddRow, ChipRenameInput,
+ *   ParseProgressBar, ClarifyingBusyBanner, ExtractedPanels, constants, types, utils)
  * - 의존성: ../lib/manual-file(파일 읽기/분류), ../lib/manual-months(월 구간 확인),
  *   ../lib/parse-events(일정 합치기), ../lib/kst(오늘 날짜), ../lib/types(여러 데이터 타입),
  *   ./ManualPreview, ./marks
@@ -47,14 +46,13 @@
  * @module components/ManualImportWizard
  */
 import { Lightbulb } from "@phosphor-icons/react";
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import clubSample from "../data/club.json";
 import { readKst } from "../lib/kst";
 import {
   classifyManualFile,
   filePayloadForApi,
   HWP_MESSAGE,
-  MANUAL_ACCEPT,
   MANUAL_TEXT_PLACEHOLDER,
   MANUAL_UPLOAD_GUIDE,
   MANUAL_UPLOAD_INTRO,
@@ -75,540 +73,44 @@ import {
   type ClubProfile,
   type ManualImportDepth,
   type OnboardingChatMessage,
-  type OnboardingQuestionCategory,
   type QuestionOption,
   type RoleDefinition,
 } from "../lib/types";
+import { AddRow } from "./manual-import/AddRow";
+import { ChipRenameInput } from "./manual-import/ChipRenameInput";
+import { ClarifyingBusyBanner } from "./manual-import/ClarifyingBusyBanner";
+import {
+  CATEGORY_LABEL,
+  FALLBACK_CATEGORY,
+  FALLBACK_ROLE,
+  MAX_TURNS,
+  PARSE_CHUNK_MS,
+  PARSE_CHUNK_TOTAL,
+  PARSE_FINISH_MS,
+  PARSE_HALVES,
+  SHORT_MANUAL_CHARS,
+} from "./manual-import/constants";
+import { ExtractedCategoriesPanel, ExtractedRolesPanel } from "./manual-import/ExtractedPanels";
+import { FileDropzone } from "./manual-import/FileDropzone";
+import { ParseProgressBar } from "./manual-import/ParseProgressBar";
+import type { AnswerOk, ParseHalf, ParseOk, Phase, StartOk } from "./manual-import/types";
+import {
+  clubDataFromProfile,
+  composeAnswerFrom,
+  extraAliases,
+  formatParseStep,
+  isCategoryQuestion,
+  isDeptQuestion,
+  isOtherOption,
+  isTimeoutError,
+  postJson,
+  questionKey,
+  settledChunkCount,
+  waitForPaint,
+  waitMs,
+} from "./manual-import/utils";
 import { ManualPreview } from "./ManualPreview";
 import { RoleChip, Tag } from "./marks";
-
-type Phase = "input" | "clarifying" | "locked" | "parsed";
-
-type StartOk = {
-  ok: true;
-  club_name: string;
-  academic_year: number;
-  draft_roles: RoleDefinition[];
-  draft_categories: CategoryDefinition[];
-  questions: ClarifyingQuestion[];
-  assistant_message: string;
-  text?: string;
-};
-
-type AnswerOk =
-  | {
-    ok: true;
-    status: "clarifying";
-    draft_roles: RoleDefinition[];
-    draft_categories: CategoryDefinition[];
-    questions: ClarifyingQuestion[];
-    assistant_message: string;
-    turn: number;
-  }
-  | {
-    ok: true;
-    status: "locked";
-    profile: ClubProfile;
-    assistant_message: string;
-    turn: number;
-  };
-
-type ParseOk = {
-  ok: true;
-  data: ClubData;
-};
-
-type ApiError = { ok?: false; error?: string };
-
-type ParseHalf = "first" | "second";
-
-const MAX_TURNS = 4;
-const CATEGORY_LABEL: Record<OnboardingQuestionCategory, string> = {
-  roles: "부서 확인",
-  aliases: "별칭 확인",
-  club_name: "동아리명 확인",
-  event_categories: "행사 분류 확인",
-};
-const PARSE_TIMEOUT_MESSAGE = "일정 파싱이 시간 제한을 넘었습니다. 문서를 나누거나 다시 시도해 주세요.";
-const PARSE_SEASONS: { months: number[]; label: string }[] = [
-  { months: [12, 1, 2], label: "동계(12–2월)" },
-  { months: [3, 4, 5], label: "1학기(3–5월)" },
-  { months: [6, 7, 8], label: "하계(6–8월)" },
-  { months: [9, 10, 11], label: "2학기(9–11월)" },
-];
-const PARSE_HALVES: Record<ParseHalf, { label: string; chunks: number[][] }> = {
-  first: {
-    label: "상반기",
-    chunks: PARSE_SEASONS.slice(0, 2).map((season) => season.months),
-  },
-  second: {
-    label: "하반기",
-    chunks: PARSE_SEASONS.slice(2).map((season) => season.months),
-  },
-};
-
-/**
- * 서버 응답 본문(원문 문자열)에 시간 초과를 나타내는 문구가 들어 있는지 검사한다.
- * 특이사항: JSON 파싱이 안 되는 응답(예: 함수 런타임이 던진 순수 에러 텍스트)을 처리하기 위한 용도.
- */
-function isTimeoutBody(raw: string): boolean {
-  return /TimeoutError|timed?\s*out/i.test(raw);
-}
-
-/**
- * 주어진 에러가 일정 파싱 시간 초과로 인한 것인지 판단한다.
- * 특이사항: 우리가 직접 던진 PARSE_TIMEOUT_MESSAGE 메시지와, 서버가 보낸 원문 시간 초과 문구를 모두 확인한다.
- */
-function isTimeoutError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message === PARSE_TIMEOUT_MESSAGE || isTimeoutBody(message);
-}
-
-const PARSE_CHUNK_TOTAL = PARSE_SEASONS.length;
-const PARSE_CHUNK_MS = 9000;
-const PARSE_FINISH_MS = 560;
-const SHORT_MANUAL_CHARS = 4000;
-
-function waitMs(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-/**
- * 브라우저가 화면을 한 번 그릴 때까지 기다린다.
- * 특이사항: requestAnimationFrame을 두 번 중첩해서, 상태 변경(예: 진행률 100%)이 실제로
- * 화면에 반영된 뒤에 다음 동작(예: 미리보기 전환)을 이어가도록 한다.
- */
-function waitForPaint(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
-}
-
-/**
- * 특정 반기(half)에서 이미 끝난(성공적으로 저장된) 월 구간 개수를 계산한다.
- * @returns 해당 반기가 지금 다시 파싱 중이면 0, 아니면(이미 완료된 반기면) 그 반기의 전체 구간 수
- */
-function settledChunkCount(half: ParseHalf, events: ClubEvent[] | null, running: ParseHalf[]): number {
-  if (running.includes(half)) return 0;
-  return events ? PARSE_HALVES[half].chunks.length : 0;
-}
-
-/**
- * 일정 추출 진행률을 보여주는 얇은 막대 바 컴포넌트.
- * @param value - 0~100 사이의 진행률(%). 범위를 벗어나면 0~100으로 잘라서 표시한다.
- */
-function ParseProgressBar({ value }: { value: number }) {
-  const width = Math.min(100, Math.max(0, value));
-  return (
-    <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-border2" aria-hidden>
-      <div
-        className="h-full rounded-full bg-accent"
-        style={{
-          width: `${width}%`,
-          transition:
-            width >= 99
-              ? "width 520ms cubic-bezier(0.16, 1, 0.3, 1)"
-              : "width 120ms linear",
-        }}
-      />
-    </div>
-  );
-}
-
-/**
- * 확인 질문에 답변을 보내고 서버 응답을 기다리는 동안 보여주는 "처리 중" 안내 배너.
- * @param label - 배너에 표시할 상태 문구(예: "답변 전송 중", "부서표 확정 중")
- */
-function ClarifyingBusyBanner({ label }: { label: string }) {
-  return (
-    <div className="mb-4 rounded-xl border border-border bg-card px-4 py-3" role="status" aria-live="polite">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-semibold text-accent">{label}</p>
-        <span className="pulse-dot size-2 rounded-full bg-accent" />
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-border2" aria-hidden>
-        <div className="progress-indeterminate h-full w-[34%] rounded-full bg-accent" />
-      </div>
-    </div>
-  );
-}
-
-/**
- * 파싱 중인 월 구간(months)을 사용자에게 보여줄 라벨로 바꾼다.
- * @returns 미리 정의된 계절(PARSE_SEASONS)과 정확히 일치하면 그 계절 이름(예: "1학기(3–5월)"),
- * 아니면 "n월" 또는 "n–m월" 형태의 문자열
- */
-function formatParseStep(months: number[]): string {
-  const found = PARSE_SEASONS.find(
-    (season) => season.months.length === months.length && season.months.every((month, index) => month === months[index]),
-  );
-  if (found) return found.label;
-  if (months.length === 1) return `${months[0]}월`;
-  return `${months[0]}–${months[months.length - 1]}월`;
-}
-
-/**
- * 확정된 부서표(profile)와 추출된 일정(events)을 합쳐 저장/미리보기용 ClubData 형태로 만든다.
- * 특이사항: 역할 설명(description)이 빈 값이면 필드 자체를 넣지 않는다.
- */
-function clubDataFromProfile(profile: ClubProfile, events: ClubEvent[], genre: ClubGenre): ClubData {
-  return {
-    club_info: {
-      club_name: profile.club_name,
-      academic_year: profile.academic_year,
-      club_genre: genre,
-      roles: profile.roles.map((role) => ({
-        role_name: role.role_name,
-        ...(role.description ? { description: role.description } : {}),
-      })),
-    },
-    events,
-  };
-}
-
-/**
- * 역할(role)의 별칭 목록에서, 공백만 있거나 정식 이름과 똑같은 별칭을 제외한 "진짜 별칭"만 남긴다.
- */
-function extraAliases(role: RoleDefinition): string[] {
-  return role.aliases.map((alias) => alias.trim()).filter((alias) => alias.length > 0 && alias !== role.role_name);
-}
-
-/**
- * 행사 분류(category)의 별칭 목록에서, 공백만 있거나 정식 라벨과 똑같은 별칭을 제외한다.
- */
-function extraCategoryAliases(category: CategoryDefinition): string[] {
-  return category.aliases
-    .map((alias) => alias.trim())
-    .filter((alias) => alias.length > 0 && alias !== category.label);
-}
-
-function isDeptQuestion(question: ClarifyingQuestion | undefined): boolean {
-  return question?.category === "roles" || question?.category === "aliases";
-}
-
-function isCategoryQuestion(question: ClarifyingQuestion | undefined): boolean {
-  return question?.category === "event_categories";
-}
-
-/**
- * 매뉴얼에서 추출된 부서(role) 목록과, 각 부서에 딸린 별칭을 "별칭 → 정식 이름" 형태로 보여준다.
- * 특이사항: 별칭이 없는 부서는 이름만 한 줄로, 별칭이 있는 부서는 별칭마다 한 줄씩 "별칭 감지됨"
- * 배지와 함께 늘어놓는다(roles가 비어 있으면 아무것도 렌더링하지 않음).
- */
-function ExtractedRolesPanel({ roles }: { roles: RoleDefinition[] }) {
-  if (roles.length === 0) return null;
-  const roster = roles.map((role) => role.role_name);
-  return (
-    <div className="fade-in mb-6 rounded-xl border border-border bg-bg px-4 py-3.5">
-      <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-fg3 uppercase">추출된 부서 (별칭 포함)</p>
-      <div className="flex flex-col gap-2">
-        {roles.flatMap((role) => {
-          const aliases = extraAliases(role);
-          if (aliases.length === 0) {
-            return [
-              <div key={role.role_name} className="flex flex-wrap items-center gap-2">
-                <RoleChip name={role.role_name} roster={roster} asButton />
-              </div>,
-            ];
-          }
-          return aliases.map((alias) => (
-            <div key={`${role.role_name}-${alias}`} className="flex flex-wrap items-center gap-2">
-              <RoleChip name={alias} roster={roster} accentName={role.role_name} asButton />
-              <span className="text-xs text-fg3">→</span>
-              <RoleChip name={role.role_name} roster={roster} asButton />
-              <span className="rounded-[5px] bg-[rgba(234,179,8,0.1)] px-[7px] py-0.5 text-[11px] font-semibold text-warn">
-                별칭 감지됨
-              </span>
-            </div>
-          ));
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * 매뉴얼에서 추출된 행사 분류(category) 목록과 각 분류의 별칭을 태그 형태로 보여준다.
- * 특이사항: categories가 비어 있으면 아무것도 렌더링하지 않는다.
- */
-function ExtractedCategoriesPanel({ categories }: { categories: CategoryDefinition[] }) {
-  if (categories.length === 0) return null;
-  return (
-    <div className="fade-in mb-6 rounded-xl border border-border bg-bg px-4 py-3.5">
-      <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-fg3 uppercase">추출된 행사 분류</p>
-      <div className="flex flex-col gap-2">
-        {categories.map((category) => {
-          const aliases = extraCategoryAliases(category);
-          return (
-            <div key={category.label} className="flex flex-wrap items-center gap-2">
-              <Tag cat={category.label} />
-              {aliases.length > 0 ? (
-                <span className="text-[12px] text-fg3">별칭 {aliases.join(", ")}</span>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const FALLBACK_ROLE: RoleDefinition = {
-  role_name: "공통",
-  aliases: ["공통업무", "미지정", "미배정", "담당없음"],
-};
-
-const FALLBACK_CATEGORY: CategoryDefinition = {
-  label: "기타",
-  aliases: ["미분류", "기타행사"],
-};
-
-/**
- * 부서/행사 분류를 새로 추가할 때 쓰는 입력창 + "추가" 버튼 한 줄짜리 컴포넌트.
- * 특이사항: Enter 키를 눌러도 onAdd가 호출된다(버튼 클릭과 동일하게 동작).
- */
-function AddRow({
-  value,
-  placeholder,
-  onChange,
-  onAdd,
-  disabled,
-}: {
-  value: string;
-  placeholder: string;
-  onChange: (value: string) => void;
-  onAdd: () => void;
-  disabled?: boolean;
-}) {
-  function submit() {
-    if (disabled) return;
-    onAdd();
-  }
-  return (
-    <div className="mt-6 flex gap-2 border-t border-border pt-5">
-      <input
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-          if (event.key === "Enter") submit();
-        }}
-        placeholder={placeholder}
-        className="flex-1 rounded-[10px] border-[1.5px] border-border bg-bg px-3.5 py-[9px] text-[13px] text-fg outline-none disabled:opacity-60"
-      />
-      <button
-        type="button"
-        onClick={submit}
-        className="cursor-pointer rounded-[10px] border-0 bg-border px-4 py-[9px] text-[13px] font-semibold text-fg2 disabled:opacity-60"
-        disabled={disabled}
-      >
-        + 추가
-      </button>
-    </div>
-  );
-}
-
-/**
- * 부서 칩(chip)이나 분류 태그를 클릭했을 때, 이름을 바로 고칠 수 있게 보여주는 인라인 입력창.
- * 특이사항: 포커스를 잃거나(onBlur) Enter를 누르면 onCommit, Escape를 누르면 onCancel이 호출된다.
- */
-function ChipRenameInput({
-  value,
-  onChange,
-  onCommit,
-  onCancel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onCommit: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <input
-      autoFocus
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onCommit}
-      onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          onCommit();
-        }
-        if (event.key === "Escape") onCancel();
-      }}
-      className="rounded-lg border-[1.5px] border-accent bg-bg px-3 py-[5px] text-[13px] font-semibold text-fg outline-none"
-    />
-  );
-}
-
-/**
- * 매뉴얼 파일을 드래그해서 놓거나 클릭해서 탐색기로 고를 수 있는 업로드 영역 컴포넌트.
- * 특이사항: 드래그 중인지(isDragging) 상태만 내부에서 관리하고, 실제 파일 처리는
- * onFileSelect 콜백으로 위임한다. 같은 파일을 다시 선택할 수 있도록 매 선택 후
- * input의 value를 비운다.
- */
-function FileDropzone({ onFileSelect }: { onFileSelect: (file: File) => void }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function handleDragOver(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragging(true);
-  }
-
-  function handleDragLeave() {
-    setIsDragging(false);
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setIsDragging(false);
-    const file = event.dataTransfer.files[0];
-    if (file) onFileSelect(file);
-  }
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) onFileSelect(file);
-    event.target.value = "";
-  }
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => fileInputRef.current?.click()}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          fileInputRef.current?.click();
-        }
-      }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all"
-      style={{
-        borderColor: isDragging ? "var(--accent)" : "var(--border2)",
-        background: isDragging ? "rgba(0,102,255,0.04)" : "var(--card)",
-      }}
-    >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={MANUAL_ACCEPT}
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      <p className="font-display mb-2 text-lg font-semibold text-fg">운영 매뉴얼 업로드</p>
-      <p className="text-sm font-medium text-fg2">
-        파일을 드래그하여 올리거나 <span className="text-accent underline">여기 클릭</span>하여 탐색기 열기
-      </p>
-      <div className="mt-4 flex justify-center gap-2">
-        {[".md", ".docx", ".pdf", ".txt"].map((ext) => (
-          <span
-            key={ext}
-            className="rounded-md border border-border bg-card2 px-2 py-1 text-[13px] font-semibold text-fg3"
-          >
-            {ext}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * 선택지가 "직접 입력(기타)" 옵션인지 판단한다.
- * 특이사항: id가 "other"이거나 라벨에 "직접 입력"이 포함되면 무조건 기타로 보고, 그 외에는
- * is_other 플래그를 보되 라벨에 "기타로"가 들어간 경우(예: "기타로 분류")는 자유 입력이 아니므로 제외한다.
- */
-function isOtherOption(option: QuestionOption): boolean {
-  if (option.id === "other" || option.label.includes("직접 입력")) return true;
-  return option.is_other === true && !option.label.includes("기타로");
-}
-
-/**
- * 질문마다 답변을 구분해서 저장하기 위한 고유 키를 만든다.
- * 특이사항: 서버 응답에 따라 질문 순서/개수가 바뀌어도 같은 질문을 가리키도록 인덱스와
- * 카테고리를 함께 조합한다.
- */
-function questionKey(question: ClarifyingQuestion, index: number): string {
-  return `${index}:${question.category}`;
-}
-
-/**
- * 확인 질문들에 대해 사용자가 고른 선택지(및 "기타" 직접 입력값)를 모아, 서버로 보낼
- * 하나의 답변 문자열로 합친다.
- * @returns 질문이 없으면 자유 입력값을, 있으면 "질문\n선택: ...(\n입력: ...)" 형태를 질문 순서대로
- * 이어붙인 문자열. 아직 답하지 않은 질문이 있거나(선택지 없음) "기타"인데 직접 입력이 비어 있으면 null.
- * 특이사항: 질문 하나라도 답이 미완성이면 전체를 null로 반환해서, 호출 쪽에서 "다 답해야 전송 가능"을
- * 강제하게 한다.
- */
-function composeAnswerFrom(
-  questions: ClarifyingQuestion[],
-  selectedByQuestion: Record<string, string>,
-  otherByQuestion: Record<string, string>,
-): string | null {
-  if (questions.length === 0) {
-    const only = Object.values(otherByQuestion).map((value) => value.trim()).find(Boolean);
-    return only || null;
-  }
-  const parts: string[] = [];
-  for (let index = 0; index < questions.length; index += 1) {
-    const question = questions[index];
-    if (!question) return null;
-    const key = questionKey(question, index);
-    const selectedId = selectedByQuestion[key] ?? selectedByQuestion[question.question];
-    const option = question.options.find((item) => item.id === selectedId);
-    if (!option) return null;
-    if (isOtherOption(option)) {
-      const custom = (otherByQuestion[key] ?? otherByQuestion[question.question] ?? "").trim();
-      if (!custom) return null;
-      parts.push(`${question.question}\n선택: ${option.label}\n입력: ${custom}`);
-      continue;
-    }
-    parts.push(`${question.question}\n선택: ${option.label}`);
-  }
-  return parts.join("\n\n");
-}
-
-/**
- * Netlify 함수(백엔드 API)에 JSON을 POST로 보내고 결과를 파싱해서 돌려준다.
- * @returns 서버가 보낸 성공 응답(JSON) 바디
- * 특이사항: 응답 본문이 JSON이 아니면(예: 함수 런타임이 순수 텍스트로 에러를 던진 경우) 시간 초과
- * 여부를 먼저 확인해 전용 에러 메시지를 던지고, HTTP 실패나 `{ ok: false }` 응답도 에러로 변환한다.
- * 이 파일의 모든 서버 통신(startOnboarding, sendAnswer, requestEvents 등)이 이 함수를 거친다.
- */
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const raw = await response.text();
-  let payload: T | ApiError | undefined;
-  if (raw) {
-    try {
-      payload = JSON.parse(raw) as T | ApiError;
-    } catch {
-      if (isTimeoutBody(raw)) throw new Error(PARSE_TIMEOUT_MESSAGE);
-      const preview = raw.slice(0, 80).trim();
-      throw new Error(preview ? `요청 실패 (${response.status}): ${preview}` : `요청 실패 (${response.status})`);
-    }
-  }
-  if (!response.ok || (payload && typeof payload === "object" && "ok" in payload && payload.ok === false)) {
-    const message = payload && typeof payload === "object" && "error" in payload ? payload.error : undefined;
-    if (typeof message === "string" && isTimeoutBody(message)) {
-      throw new Error(PARSE_TIMEOUT_MESSAGE);
-    }
-    throw new Error(message || `요청 실패 (${response.status})`);
-  }
-  if (!payload) throw new Error(`요청 실패 (${response.status})`);
-  return payload as T;
-}
 
 type ManualImportWizardProps = {
   existingData: ClubData | null;
